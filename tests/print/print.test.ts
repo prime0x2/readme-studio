@@ -110,4 +110,20 @@ describe("PDF export (browser print)", () => {
       await app.emulateMediaType(undefined);
     }
   }, 60_000);
+
+  it("draws diagram arrowheads from the printed copy, not the hidden preview", async () => {
+    // The preview shows the same diagram; print hides it. Marker ids shared
+    // between the two resolve to the preview's copy and arrowheads vanish.
+    const markdown = "```mermaid\nflowchart LR\n  A --> B\n```";
+    await app.evaluate((md) => window.previewFor(md), markdown);
+    await app.evaluate((md) => window.preparePrintFor(md), markdown);
+    const markersInPrint = await app.evaluate(() =>
+      [...document.querySelectorAll("#rs-print-root .mermaid-diagram path")]
+        .map((el) => /url\(["']?#([^"')]+)/.exec(getComputedStyle(el).markerEnd)?.[1])
+        .filter((id): id is string => !!id)
+        .map((id) => !!document.getElementById(id)?.closest("#rs-print-root")),
+    );
+    expect(markersInPrint.length).toBeGreaterThan(0);
+    expect(markersInPrint.every(Boolean)).toBe(true);
+  }, 60_000);
 });

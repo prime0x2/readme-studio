@@ -39,11 +39,15 @@ const FONT_FAMILY =
 const RETRY = Symbol("retry");
 
 /**
+ * "print" is the light preview under its own cache key: the printed copy
+ * sits on the page next to the preview, and a shared SVG would share its
+ * element ids, so the print's arrowheads would point at the preview's
+ * <marker>s, which printing hides.
  * "export" renders for rasterizing into DOCX: light theme, and labels as SVG
  * <text> instead of HTML in <foreignObject> — browsers refuse to read back
  * a canvas an SVG with foreignObject was drawn on.
  */
-type RenderMode = PreviewTheme | "export";
+type RenderMode = PreviewTheme | "print" | "export";
 
 async function render(code: string, mode: RenderMode): Promise<string | null | typeof RETRY> {
   let libs: Awaited<ReturnType<typeof load>>;
@@ -94,6 +98,11 @@ function queued(code: string, mode: RenderMode, signal?: AbortSignal): Promise<s
  */
 export function mermaidRenderer(theme: PreviewTheme, signal?: AbortSignal): DiagramRenderer {
   return (code) => queued(code, theme, signal);
+}
+
+/** Light-theme renderer for the printed (PDF) copy of the document. */
+export function mermaidPrintRenderer(): DiagramRenderer {
+  return (code) => queued(code, "print");
 }
 
 /** A diagram as SVG suited to rasterizing (DOCX export), or null. */

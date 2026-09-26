@@ -1,5 +1,5 @@
 import { type DocumentBase, renderMarkdown, slugifyTitle } from "@/shared";
-import { mermaidRenderer } from "./mermaid";
+import { mermaidPrintRenderer } from "./mermaid";
 
 /*
  * PDF export without a server: the document is rendered into the page in a
@@ -43,7 +43,7 @@ export function renderPrintBody(markdown: string, base?: DocumentBase): Promise<
   return renderMarkdown(markdown, {
     theme: "light",
     base,
-    renderDiagram: mermaidRenderer("light"),
+    renderDiagram: mermaidPrintRenderer(),
   });
 }
 
