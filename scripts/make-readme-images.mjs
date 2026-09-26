@@ -148,9 +148,9 @@ function windowFrame(src, { dark = false, width }) {
   </div>`;
 }
 
-async function render(html, width, height, file) {
+async function render(html, width, height, file, scale = 2) {
   const page = await browser.newPage();
-  await page.setViewport({ width, height, deviceScaleFactor: 2 });
+  await page.setViewport({ width, height, deviceScaleFactor: scale });
   await page.setContent(
     `<!doctype html><html><head>${FONTS}<style>*{box-sizing:border-box}body{margin:0;width:${width}px;height:${height}px;overflow:hidden;font-family:'IBM Plex Sans',sans-serif}</style></head><body>${html}</body></html>`,
     {
@@ -173,11 +173,11 @@ const BG = `background:
   radial-gradient(rgba(255,255,255,.10) 1px, transparent 1.4px) 0 0/22px 22px,
   linear-gradient(135deg, #f5721a, #bf440e)`;
 
-// ── Cover ───────────────────────────────────────────────────────────
+// ── Cover (2x for the README; 1x for GitHub's social preview, which
+// must be under 1 MB) ──────────────────────────────────────────────
 const pill = (t) =>
   `<span style="padding:7px 16px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);color:#fff;font-weight:500;font-size:16px">${t}</span>`;
-await render(
-  `<div style="position:relative;width:1280px;height:640px;${BG};display:flex;flex-direction:column;align-items:center">
+const cover = `<div style="position:relative;width:1280px;height:640px;${BG};display:flex;flex-direction:column;align-items:center">
     <div style="display:flex;align-items:center;gap:18px;margin-top:52px">
       <span style="width:62px;height:62px;border-radius:15px;background:#fff;color:#e65a0f;padding:9px;box-shadow:0 8px 24px rgba(80,20,0,.25)">${BOOK}</span>
       <span style="font-family:Fraunces,serif;font-weight:600;font-size:60px;letter-spacing:-.02em;color:#fff">Readme<em style="font-style:italic">Studio</em></span>
@@ -189,11 +189,9 @@ await render(
     <div style="position:absolute;top:262px;left:50%;transform:translateX(-50%)">
       ${windowFrame(dataUrl(light.png), { width: 1080 })}
     </div>
-  </div>`,
-  1280,
-  640,
-  "cover.png",
-);
+  </div>`;
+await render(cover, 1280, 640, "cover.png");
+await render(cover, 1280, 640, "social-preview.png", 1);
 
 // ── Dark-mode card ──────────────────────────────────────────────────
 await render(
