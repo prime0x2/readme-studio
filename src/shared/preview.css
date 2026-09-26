@@ -1,0 +1,404 @@
+/*
+ * ReadmeStudio document stylesheet — GitHub-flavored.
+ * Used by BOTH the web preview and the server-side PDF renderer; this is
+ * the single source of truth, so the preview and PDF can never drift.
+ * Theme is selected with `data-theme="light|dark"` on .markdown-body.
+ * Exports always render light (see SPEC §6.3).
+ */
+
+.markdown-body {
+  --md-fg: #1f2328;
+  --md-fg-muted: #59636e;
+  --md-bg: #ffffff;
+  --md-border: #d1d9e0;
+  --md-border-muted: #d1d9e0b3;
+  --md-accent: #0969da;
+  --md-code-bg: #f6f8fa;
+  --md-quote-border: #d1d9e0;
+  --md-table-stripe: #f6f8fa;
+  --md-mark-bg: #fff8c5;
+
+  color: var(--md-fg);
+  background-color: var(--md-bg);
+  /* GitHub's markdown font (2026): Mona Sans, then their system fallbacks.
+     Bengali has no Mona Sans glyphs, so it gets a bundled Noto face (the web
+     app loads it from @fontsource; the PDF renderer embeds it) instead of
+     depending on whatever fonts the viewer or the export server has. */
+  font-family:
+    "Mona Sans", "Noto Sans Bengali Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 16px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
+
+.markdown-body[data-theme="dark"] {
+  --md-fg: #f0f6fc;
+  --md-fg-muted: #9198a1;
+  --md-bg: #0d1117;
+  --md-border: #3d444d;
+  --md-border-muted: #3d444db3;
+  --md-accent: #4493f8;
+  --md-code-bg: #151b23;
+  --md-quote-border: #3d444d;
+  --md-table-stripe: #151b23;
+  --md-mark-bg: #5a4a00;
+}
+
+.markdown-body > *:first-child {
+  margin-top: 0 !important;
+}
+.markdown-body > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* ── Headings ───────────────────────────────────────────────────────── */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.markdown-body h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--md-border-muted);
+}
+.markdown-body h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--md-border-muted);
+}
+.markdown-body h3 {
+  font-size: 1.25em;
+}
+.markdown-body h4 {
+  font-size: 1em;
+}
+.markdown-body h5 {
+  font-size: 0.875em;
+}
+.markdown-body h6 {
+  font-size: 0.85em;
+  color: var(--md-fg-muted);
+}
+
+/* ── Block spacing ──────────────────────────────────────────────────── */
+.markdown-body p,
+.markdown-body blockquote,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body dl,
+.markdown-body table,
+.markdown-body pre,
+.markdown-body details {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+/* ── Links ──────────────────────────────────────────────────────────── */
+.markdown-body a {
+  color: var(--md-accent);
+  text-decoration: none;
+}
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+/* ── Lists ──────────────────────────────────────────────────────────── */
+/* Explicit markers: the web app's CSS reset (Tailwind preflight) strips
+   list-style, so the shared sheet must restore GitHub's markers. */
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 2em;
+}
+.markdown-body ul {
+  list-style-type: disc;
+}
+.markdown-body ol {
+  list-style-type: decimal;
+}
+.markdown-body ul ul,
+.markdown-body ol ul {
+  list-style-type: circle;
+}
+.markdown-body ul ul ul,
+.markdown-body ol ul ul {
+  list-style-type: square;
+}
+.markdown-body li + li {
+  margin-top: 0.25em;
+}
+.markdown-body li > p {
+  margin-top: 16px;
+}
+.markdown-body ul ul,
+.markdown-body ul ol,
+.markdown-body ol ul,
+.markdown-body ol ol {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Task lists */
+.markdown-body .task-list-item {
+  list-style-type: none;
+}
+.markdown-body .contains-task-list {
+  padding-left: 1em;
+}
+.markdown-body .task-list-item input[type="checkbox"] {
+  margin: 0 0.35em 0.25em -1.4em;
+  vertical-align: middle;
+}
+
+/* ── Blockquotes ────────────────────────────────────────────────────── */
+.markdown-body blockquote {
+  padding: 0 1em;
+  color: var(--md-fg-muted);
+  border-left: 0.25em solid var(--md-quote-border);
+}
+.markdown-body blockquote > :first-child {
+  margin-top: 0;
+}
+.markdown-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* ── Code ───────────────────────────────────────────────────────────── */
+.markdown-body code,
+.markdown-body pre,
+.markdown-body samp,
+.markdown-body kbd {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    "Noto Sans Bengali Variable", monospace;
+}
+.markdown-body code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  white-space: break-spaces;
+  background-color: var(--md-code-bg);
+  border-radius: 6px;
+}
+.markdown-body pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  border-radius: 6px;
+  /* overrides Shiki's theme background so light/dark stay consistent */
+  background-color: var(--md-code-bg) !important;
+}
+.markdown-body pre code {
+  display: inline;
+  max-width: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  line-height: inherit;
+  word-wrap: normal;
+  background-color: transparent;
+  border: 0;
+  font-size: 100%;
+  white-space: pre;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+.markdown-body table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+.markdown-body table th {
+  font-weight: 600;
+}
+.markdown-body table th,
+.markdown-body table td {
+  padding: 6px 13px;
+  border: 1px solid var(--md-border);
+}
+.markdown-body table tr {
+  background-color: var(--md-bg);
+  border-top: 1px solid var(--md-border-muted);
+}
+.markdown-body table tr:nth-child(2n) {
+  background-color: var(--md-table-stripe);
+}
+
+/* ── Images & media ─────────────────────────────────────────────────── */
+.markdown-body img {
+  /* Explicit browser defaults: host pages often ship a CSS reset (the web
+     app's Tailwind preflight makes every img display:block, which stacks
+     inline badges/icons vertically and ignores align="center"). Sizes from
+     width/height attributes arrive as inline styles for the same reason
+     (see rehypeImageSize). */
+  display: inline;
+  vertical-align: baseline;
+  max-width: 100%;
+  box-sizing: content-box;
+}
+.markdown-body img[align="left"] {
+  padding-right: 20px;
+}
+.markdown-body img[align="right"] {
+  padding-left: 20px;
+}
+
+/* ── Alerts (> [!NOTE] …) ───────────────────────────────────────────── */
+.markdown-body {
+  --md-alert-note: #0969da;
+  --md-alert-tip: #1a7f37;
+  --md-alert-important: #8250df;
+  --md-alert-warning: #9a6700;
+  --md-alert-caution: #d1242f;
+}
+.markdown-body[data-theme="dark"] {
+  --md-alert-note: #4493f8;
+  --md-alert-tip: #3fb950;
+  --md-alert-important: #ab7df8;
+  --md-alert-warning: #d29922;
+  --md-alert-caution: #f85149;
+}
+.markdown-body .markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: 0.25em solid var(--md-alert-color);
+}
+.markdown-body .markdown-alert > :last-child {
+  margin-bottom: 0;
+}
+.markdown-body .markdown-alert-title {
+  margin-bottom: 4px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--md-alert-color);
+}
+.markdown-body .markdown-alert-note {
+  --md-alert-color: var(--md-alert-note);
+}
+.markdown-body .markdown-alert-tip {
+  --md-alert-color: var(--md-alert-tip);
+}
+.markdown-body .markdown-alert-important {
+  --md-alert-color: var(--md-alert-important);
+}
+.markdown-body .markdown-alert-warning {
+  --md-alert-color: var(--md-alert-warning);
+}
+.markdown-body .markdown-alert-caution {
+  --md-alert-color: var(--md-alert-caution);
+}
+
+/* ── Diagrams (```mermaid) ─────────────────────────────────────────── */
+.markdown-body .mermaid-diagram {
+  margin-bottom: 16px;
+  text-align: center;
+}
+.markdown-body .mermaid-diagram svg {
+  display: block; /* centered the same with or without a CSS reset */
+  margin-inline: auto;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Misc ───────────────────────────────────────────────────────────── */
+.markdown-body hr {
+  height: 0.25em;
+  padding: 0;
+  margin: 24px 0;
+  background-color: var(--md-border);
+  border: 0;
+}
+.markdown-body mark {
+  background-color: var(--md-mark-bg);
+  color: var(--md-fg);
+}
+.markdown-body kbd {
+  display: inline-block;
+  padding: 3px 5px;
+  font-size: 11px;
+  line-height: 10px;
+  color: var(--md-fg);
+  vertical-align: middle;
+  background-color: var(--md-code-bg);
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  box-shadow: inset 0 -1px 0 var(--md-border);
+}
+.markdown-body details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.markdown-body del {
+  text-decoration: line-through;
+}
+
+/*
+ * ── Print / PDF pagination rules (SPEC §6.2) ───────────────────────────
+ * Applied by headless Chromium during page.pdf(). Smart breaks:
+ * headings keep their following content, table rows/images/blockquotes
+ * stay intact, code blocks may split cleanly across pages.
+ */
+@media print {
+  .markdown-body {
+    font-size: 11pt;
+  }
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4,
+  .markdown-body h5,
+  .markdown-body h6 {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .markdown-body table tr,
+  .markdown-body img,
+  .markdown-body .mermaid-diagram,
+  .markdown-body .markdown-alert,
+  .markdown-body blockquote,
+  .markdown-body li {
+    break-inside: avoid;
+  }
+  /* On screen a wide table scrolls (like GitHub); paper can't scroll, so
+     it must wrap to the page width instead of being clipped at the edge. */
+  .markdown-body table {
+    display: table;
+    width: auto;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .markdown-body table th,
+  .markdown-body table td {
+    padding: 5px 9px; /* a little tighter than screen: page width is fixed */
+    overflow-wrap: break-word;
+  }
+  /* Long URLs and code are the usual unbreakable tokens; let only those
+     split anywhere so ordinary words keep their shape. */
+  .markdown-body table a,
+  .markdown-body table code {
+    overflow-wrap: anywhere;
+  }
+  .markdown-body thead {
+    display: table-header-group; /* repeat header row on each page */
+  }
+  .markdown-body pre {
+    white-space: pre-wrap; /* long lines wrap instead of clipping */
+    word-break: break-word;
+  }
+  .markdown-body a {
+    color: var(--md-accent); /* keep links visibly blue in print */
+  }
+}

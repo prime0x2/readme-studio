@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+*.log
+*.local
+.DS_Store
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Environment files — .env.example and the (public) production settings
+# are committed; anything else stays local.
+.env
+.env.*
+!.env.example
+!.env.production
+
+# Wrangler local state
+.wrangler/

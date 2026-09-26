@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Mona Sans — GitHub's markdown font (OFL), served for the preview pane.
+   Same family the PDF/DOCX engines embed, so all surfaces match. */
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/MonaSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/MonaSans-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/MonaSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/MonaSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+
+  /* Accent — #F5721A orange */
+  --color-accent-50: #fef6ee;
+  --color-accent-100: #fdead7;
+  --color-accent-200: #fad1ae;
+  --color-accent-300: #f7b07a;
+  --color-accent-400: #f68d44;
+  --color-accent-500: #f5721a;
+  --color-accent-600: #e65a0f;
+  --color-accent-700: #bf440e;
+  --color-accent-800: #983813;
+  --color-accent-900: #7a3013;
+  --color-accent-950: #422008;
+
+  /* Paper / ink neutrals */
+  --color-paper: #faf9f7;
+  --color-ink: #16130f;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-200);
+  color: var(--color-accent-950);
+}
+.dark ::selection {
+  background: var(--color-accent-800);
+  color: var(--color-accent-50);
+}
+
+/* Subtle scrollbars that match the chrome */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, currentColor 25%, transparent) transparent;
+}
+
+/* CodeMirror fills its pane */
+.cm-editor {
+  height: 100%;
+  outline: none !important;
+  font-size: 13.5px;
+}
+.cm-editor .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.65;
+}
+.cm-editor .cm-content {
+  padding: 16px 4px;
+}

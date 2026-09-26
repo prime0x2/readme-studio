@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>ReadmeStudio — Free README Editor with PDF & DOCX Export</title>
+    <meta
+      name="description"
+      content="Free online README & Markdown editor. Compose with ready-made sections, see a live GitHub-style preview, and convert Markdown to PDF, Word (DOCX), or Markdown — exports that match the preview exactly. No signup."
+    />
+    <link rel="canonical" href="https://readme.prime0x2.dev/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#f5721a" />
+    <meta name="application-name" content="ReadmeStudio" />
+    <meta name="author" content="Prime" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, Discord…) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ReadmeStudio" />
+    <meta property="og:title" content="ReadmeStudio — Free README Editor with PDF & DOCX Export" />
+    <meta
+      property="og:description"
+      content="Compose a README from ready-made sections, preview it GitHub-style, and convert Markdown to PDF, Word (DOCX), or Markdown. Exports match the preview exactly. Free, no signup."
+    />
+    <meta property="og:url" content="https://readme.prime0x2.dev/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://readme.prime0x2.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ReadmeStudio — README & Markdown editor with PDF, DOCX and Markdown export" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://readme.prime0x2.dev/" />
+    <meta name="twitter:title" content="ReadmeStudio — Free README Editor with PDF & DOCX Export" />
+    <meta
+      name="twitter:description"
+      content="Convert Markdown to PDF or Word (DOCX) with exports that match a live GitHub-style preview. Free, no signup."
+    />
+    <meta name="twitter:image" content="https://readme.prime0x2.dev/og.png" />
+    <meta name="twitter:image:alt" content="ReadmeStudio — README & Markdown editor with PDF, DOCX and Markdown export" />
+
+    <!-- Structured data: helps Google show a rich result for the app -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ReadmeStudio",
+        "url": "https://readme.prime0x2.dev/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any (web-based)",
+        "description": "Free online README & Markdown editor with a live GitHub-style preview and high-fidelity export to PDF, Word (DOCX), and Markdown.",
+        "browserRequirements": "Requires a modern web browser",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Markdown to PDF export",
+          "Markdown to Word (DOCX) export",
+          "Live GitHub-style preview",
+          "Reorderable README section templates",
+          "Syntax highlighting",
+          "No signup, auto-saved in the browser"
+        ]
+      }
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Apply persisted UI theme before first paint to avoid a flash.
+      var persisted = null;
+      try {
+        persisted = JSON.parse(localStorage.getItem("readmestudio:doc:v1"));
+      } catch (_e) {
+        persisted = null;
+      }
+      var theme = persisted?.state?.uiTheme || "light";
+      if (
+        theme === "dark" ||
+        (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

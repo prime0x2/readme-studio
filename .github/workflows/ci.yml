@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint & format (Biome)
+        run: pnpm exec biome ci .
+
+      - name: Build
+        run: pnpm build
+
+      # Validates wrangler.jsonc and the built assets without deploying
+      # (needs no Cloudflare credentials).
+      - name: Cloudflare deploy dry run
+        run: pnpm exec wrangler deploy --dry-run
+
+      - name: Test
+        run: pnpm test

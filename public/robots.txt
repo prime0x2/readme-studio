@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://readme.prime0x2.dev/sitemap.xml

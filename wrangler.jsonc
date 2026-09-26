@@ -1,0 +1,17 @@
+// Cloudflare Workers deployment: an assets-only Worker (no Worker code).
+// `pnpm run deploy` builds the app and uploads dist/.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "readme-studio",
+  "compatibility_date": "2026-09-25",
+  "assets": {
+    "directory": "./dist",
+    // /view, /link and /gh/<owner>/<repo> are client-side routes: any path
+    // that isn't a file gets index.html.
+    "not_found_handling": "single-page-application"
+  },
+  // Production domain. Its zone must be on this Cloudflare account, and the
+  // hostname must not already have a DNS record (remove the old A record
+  // pointing at the VPS first) — Wrangler creates it on deploy.
+  "routes": [{ "pattern": "readme.prime0x2.dev", "custom_domain": true }]
+}

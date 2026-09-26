@@ -1,0 +1,26 @@
+# Build-script approval (Puppeteer's Chromium download, workerd's runtime
+# for `wrangler dev`, etc.).
+# `allowBuilds` is the pnpm 11 syntax; `onlyBuiltDependencies` is the
+# pnpm 10 equivalent — both are kept so either major works.
+allowBuilds:
+  '@biomejs/biome': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  puppeteer: true
+  workerd: true
+
+onlyBuiltDependencies:
+  - '@biomejs/biome'
+  - '@tailwindcss/oxide'
+  - esbuild
+  - puppeteer
+  - workerd
+
+# Security floors for transitive dependencies that parents pin to
+# vulnerable versions (pnpm audit): lodash-es via mermaid > chevrotain;
+# postcss, nanoid and esbuild via vite/vitest/tsx (dev tooling).
+overrides:
+  lodash-es: ^4.17.24
+  postcss: ^8.5.23
+  nanoid@3: ^3.3.18
+  esbuild: ^0.28.1
