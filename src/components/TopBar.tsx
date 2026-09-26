@@ -82,19 +82,19 @@ export function TopBar({
       type="button"
       onClick={() => void handleExport(format)}
       disabled={exporting !== null}
-      className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:border-accent-300 hover:text-accent-800 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-accent-700 dark:hover:text-accent-300"
+      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-stone-200 bg-white px-2 py-1.5 sm:px-2.5 text-xs font-medium text-stone-700 transition-colors hover:border-accent-300 hover:text-accent-800 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-accent-700 dark:hover:text-accent-300"
     >
       {exporting === format ? (
         <Loader2 size={13} className="animate-spin" />
       ) : (
-        <FileText size={13} />
+        <FileText size={13} className="hidden sm:block" />
       )}
       {label}
     </button>
   );
 
   return (
-    <header className="flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-2.5 dark:border-stone-800 dark:bg-stone-900">
+    <header className="flex items-center gap-2 border-b border-stone-200 bg-white px-3 py-2.5 sm:gap-3 sm:px-4 dark:border-stone-800 dark:bg-stone-900">
       <button
         type="button"
         onClick={onToggleSidebar}
@@ -106,17 +106,17 @@ export function TopBar({
         {sidebarVisible ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
       </button>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-2.5">
         <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-sm">
           <BookOpenText size={17} />
         </span>
-        <span className="font-display text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+        <span className="hidden font-display text-lg font-semibold sm:inline tracking-tight text-stone-900 dark:text-stone-100">
           Readme<em className="text-accent-600 not-italic italic dark:text-accent-400">Studio</em>
         </span>
       </div>
 
       {title && (
-        <span className="hidden min-w-0 truncate font-mono text-xs text-stone-400 md:block dark:text-stone-500">
+        <span className="hidden min-w-0 truncate font-mono text-xs text-stone-400 lg:block dark:text-stone-500">
           / {title}
         </span>
       )}
@@ -126,16 +126,19 @@ export function TopBar({
       <a
         href="/view"
         title="Preview (and share) a README from a GitHub link"
-        className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 sm:flex dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+        aria-label="Open from GitHub"
+        className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 sm:flex dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
       >
         <Link2 size={13} />
-        Open from GitHub
+        <span className="hidden lg:inline">Open from GitHub</span>
+        <span className="hidden md:inline lg:hidden">GitHub</span>
       </a>
 
       <button
         type="button"
         onClick={() => setUiTheme(THEME_CYCLE[uiTheme])}
         title={`Theme: ${uiTheme}`}
+        aria-label={`Theme: ${uiTheme}`}
         className="rounded-lg p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
       >
         <ThemeIcon size={16} />
@@ -145,17 +148,18 @@ export function TopBar({
         type="button"
         onClick={handleReset}
         title="Start over with a fresh document"
-        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+        aria-label={confirmReset ? "Really reset?" : "Reset"}
+        className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
           confirmReset
             ? "bg-red-600 text-white hover:bg-red-700"
             : "text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
         }`}
       >
         <RotateCcw size={13} />
-        {confirmReset ? "Really reset?" : "Reset"}
+        {confirmReset ? "Really reset?" : <span className="hidden md:inline">Reset</span>}
       </button>
 
-      <div className="mx-1 h-5 w-px bg-stone-200 dark:bg-stone-700" />
+      <div className="mx-1 hidden h-5 w-px bg-stone-200 sm:block dark:bg-stone-700" />
 
       {exportButton("pdf", "PDF")}
       {exportButton("docx", "DOCX")}
@@ -170,10 +174,12 @@ export function TopBar({
           downloadMarkdownFile(markdown);
           toast.success("README.md downloaded.");
         }}
-        className="flex items-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-700"
+        aria-label="Download README.md"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent-600 px-2.5 py-1.5 sm:px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-700"
       >
         <Download size={13} />
-        README.md
+        <span className="hidden md:inline">README.md</span>
+        <span className="md:hidden">MD</span>
       </button>
     </header>
   );
