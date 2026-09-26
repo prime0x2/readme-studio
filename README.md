@@ -125,3 +125,7 @@ READMEs already on GitHub can be shared today (`/view?url=…`, see Features). F
 ## Credits
 
 The section-editor interaction model and the original section template texts come from [readme.so](https://github.com/octokatherine/readme.so) by Katherine Oelsner (MIT License). ReadmeStudio is an independent project with its own design and export engine.
+
+## License
+
+[MIT](./LICENSE) © 2026 prime0x2
