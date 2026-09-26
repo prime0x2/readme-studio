@@ -40,5 +40,3 @@ All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/read
 ### ⬆️ Upgrading from v1
 
 Nothing to do. Your saved document lives in your browser's storage and loads as before on the same domain. The only visible change is PDF export: it now opens the print dialog instead of downloading a file directly.
-
-The previous server-based version is preserved on the [`v1`](https://github.com/prime0x2/readme-studio/tree/v1) branch, and the client-only monorepo on [`v2`](https://github.com/prime0x2/readme-studio/tree/v2).
