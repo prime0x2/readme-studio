@@ -3,7 +3,7 @@ import { type SealedShare, sealShare } from "../../src/lib/share/crypto";
 import { SHARE_MAX_CIPHERTEXT_BYTES, toBase64 } from "../../src/shared/share-protocol";
 import type { Env } from "../../worker/env";
 import worker from "../../worker/index";
-import { handleApi, newShareId, purgeExpired } from "../../worker/shares";
+import { handleApi, newShareId, purgeExpired, rateLimitKey } from "../../worker/shares";
 import { createLimiter, createTestEnv } from "./fake-env";
 
 const ORIGIN = "https://readme.test";
@@ -31,12 +31,12 @@ const get = (path: string) => new Request(`${ORIGIN}${path}`);
 async function create(
   env: Env,
   overrides: Record<string, unknown> = {},
-  options: { now?: number; ip?: string; newId?: () => string } = {},
+  options: { now?: number; ip?: string; newId?: () => string; storageCapBytes?: number } = {},
 ) {
   const res = await handleApi(
     post("/api/shares", { ...sealed, ttlDays: 7, ...overrides }, options.ip),
     env,
-    { now: options.now ?? NOW, newId: options.newId },
+    { now: options.now ?? NOW, newId: options.newId, storageCapBytes: options.storageCapBytes },
   );
   return { res, body: (await res.json()) as Record<string, unknown> };
 }
@@ -151,6 +151,43 @@ describe("share API", () => {
     });
   });
 
+  it("counts a whole IPv6 /64 as one client", async () => {
+    const { env } = createTestEnv({ CREATE_LIMITER: createLimiter(1) });
+    expect((await create(env, {}, { ip: "2001:db8::1" })).res.status).toBe(201);
+    expect((await create(env, {}, { ip: "2001:db8:0:0:ffff::2" })).res.status).toBe(429);
+    expect((await create(env, {}, { ip: "2001:db8:0:1::1" })).res.status).toBe(201);
+  });
+
+  it("limits attempts on one link across all IPs", async () => {
+    const { env } = createTestEnv({ SHARE_OPEN_LIMITER: createLimiter(2) });
+    const target = (await create(env)).body.id;
+    const other = (await create(env)).body.id;
+    const wrong = { auth: toBase64(new Uint8Array(32)) };
+    const open = (id: unknown, body: unknown, ip: string) =>
+      handleApi(post(`/api/shares/${id}/open`, body, ip), env, { now: NOW });
+    expect((await open(target, wrong, "198.51.100.1")).status).toBe(403);
+    expect((await open(target, wrong, "198.51.100.2")).status).toBe(403);
+    const blocked = await open(target, { auth: sealed.auth }, "198.51.100.3");
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({
+      error: "Too many attempts. Wait a minute and try again.",
+    });
+    expect((await open(other, { auth: sealed.auth }, "198.51.100.3")).status).toBe(200);
+  });
+
+  it("stops accepting shares once live storage reaches the cap", async () => {
+    const { env } = createTestEnv();
+    const cap = 2 * sealed.ciphertext.length;
+    expect((await create(env, { ttlDays: 1 }, { storageCapBytes: cap })).res.status).toBe(201);
+    expect((await create(env, { ttlDays: 1 }, { storageCapBytes: cap })).res.status).toBe(201);
+    const full = await create(env, {}, { storageCapBytes: cap });
+    expect(full.res.status).toBe(503);
+    expect(full.body).toEqual({ error: "Sharing is temporarily unavailable. Try again later." });
+    // Expired rows don't count, even before the daily purge removes them.
+    const later = await create(env, {}, { storageCapBytes: cap, now: NOW + DAY + 1 });
+    expect(later.res.status).toBe(201);
+  });
+
   it("retries when a generated id is already taken", async () => {
     const { env } = createTestEnv();
     const ids = ["Taken00000", "Taken00000", "Fresh00000"];
@@ -181,6 +218,37 @@ describe("share API", () => {
     const ids = new Set(Array.from({ length: 1000 }, newShareId));
     expect(ids.size).toBe(1000);
     for (const id of ids) expect(id).toMatch(/^[0-9A-Za-z]{10}$/);
+  });
+});
+
+describe("rateLimitKey", () => {
+  it("keeps IPv4 addresses as they are", () => {
+    expect(rateLimitKey("203.0.113.7")).toBe("203.0.113.7");
+    expect(rateLimitKey("unknown")).toBe("unknown");
+  });
+
+  it("keys IPv6 addresses on their /64, expanding :: first", () => {
+    const key = rateLimitKey("2001:db8::1");
+    expect(key).toBe("2001:db8:0:0::/64");
+    for (const ip of [
+      "2001:db8:0:0:ffff::2",
+      "2001:0DB8:0000:0000:1:2:3:4",
+      "2001:db8::",
+      "2001:db8:0:0::ffff:192.0.2.1",
+      "2001:db8::1%eth0",
+    ]) {
+      expect(rateLimitKey(ip), ip).toBe(key);
+    }
+    expect(rateLimitKey("2001:db8:0:1::1")).toBe("2001:db8:0:1::/64");
+    expect(rateLimitKey("1::2:3:4:5:6:7")).toBe("1:0:2:3::/64");
+    expect(rateLimitKey("::1")).toBe("0:0:0:0::/64");
+    expect(rateLimitKey("::ffff:192.0.2.1")).toBe("0:0:0:0::/64");
+  });
+
+  it("leaves malformed IPv6 text unchanged", () => {
+    for (const ip of ["1:2:3:4:5:6:7:8:9", "1::2::3", "1:2:3", "zz::1", "12345::1"]) {
+      expect(rateLimitKey(ip), ip).toBe(ip);
+    }
   });
 });
 

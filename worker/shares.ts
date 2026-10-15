@@ -28,10 +28,18 @@ const MAX_BODY_CHARS = Math.ceil((SHARE_MAX_CIPHERTEXT_BYTES * 4) / 3) + 4096;
 const ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const SHARE_API_PATH = /^\/api\/shares\/([0-9A-Za-z]{10})(\/open)?$/;
 const TOO_LARGE = "This document is too large to share (the limit is 1 MB).";
+const TOO_MANY_ATTEMPTS = "Too many attempts. Wait a minute and try again.";
+/**
+ * Live ciphertext (base64 characters) above which new shares are refused, so
+ * one client can't fill the database. D1's free tier holds 500 MB.
+ */
+export const SHARE_STORAGE_CAP_BYTES = 400 * 1024 * 1024;
 
 export interface ApiOptions {
   now?: number;
   newId?: () => string;
+  /** Overrides SHARE_STORAGE_CAP_BYTES (tests). */
+  storageCapBytes?: number;
 }
 
 class HttpError extends Error {
@@ -136,7 +144,44 @@ function parseCreate(body: Record<string, unknown>): CreateShareRequest {
   };
 }
 
-const clientIp = (request: Request) => request.headers.get("cf-connecting-ip") ?? "unknown";
+const HEX_GROUP = /^[0-9a-f]{1,4}$/;
+
+/**
+ * The rate-limit key for a client address. IPv4 is used as is. An IPv6 host
+ * usually owns a whole /64, so it would get a fresh limit per address; IPv6
+ * is keyed on its first four groups instead. Text that isn't IPv6 is returned
+ * unchanged.
+ */
+export function rateLimitKey(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  const address = (ip.split("%")[0] ?? "").toLowerCase();
+  const halves = address.split("::");
+  if (halves.length > 2) return ip;
+  const groupsOf = (part: string) => (part === "" ? [] : part.split(":"));
+  const head = groupsOf(halves[0] ?? "");
+  const tail = groupsOf(halves[1] ?? "");
+  // An embedded IPv4 suffix (::ffff:192.0.2.1) fills the last two groups.
+  const width = [...head, ...tail].reduce((n, g) => n + (g.includes(".") ? 2 : 1), 0);
+  const missing = 8 - width;
+  if (halves.length === 2 ? missing < 1 : missing !== 0) return ip;
+  const prefix = [...head, ...Array<string>(Math.max(missing, 0)).fill("0"), ...tail].slice(0, 4);
+  if (!prefix.every((g) => HEX_GROUP.test(g))) return ip;
+  return `${prefix.map((g) => Number.parseInt(g, 16).toString(16)).join(":")}::/64`;
+}
+
+const clientKey = (request: Request) =>
+  rateLimitKey(request.headers.get("cf-connecting-ip") ?? "unknown");
+
+async function assertStorageAvailable(env: Env, now: number, cap: number): Promise<void> {
+  const row = await env.DB.prepare(
+    "SELECT COALESCE(SUM(LENGTH(ciphertext)), 0) AS bytes FROM shares WHERE expires_at > ?",
+  )
+    .bind(now)
+    .first<{ bytes: number }>();
+  if ((row?.bytes ?? 0) >= cap) {
+    throw new HttpError(503, "Sharing is temporarily unavailable. Try again later.");
+  }
+}
 
 function assertLive<T extends { expires_at: number }>(
   row: T | null,
@@ -150,16 +195,17 @@ async function createShare(
   request: Request,
   env: Env,
   now: number,
-  newId: () => string,
+  options: { newId: () => string; storageCapBytes: number },
 ): Promise<Response> {
-  if (!(await env.CREATE_LIMITER.limit({ key: clientIp(request) })).success) {
+  if (!(await env.CREATE_LIMITER.limit({ key: clientKey(request) })).success) {
     throw new HttpError(429, "Too many links created. Wait a minute and try again.");
   }
   const share = parseCreate(await readJson(request));
+  await assertStorageAvailable(env, now, options.storageCapBytes);
   const authHash = await sha256Hex(fromBase64(share.auth));
   const expiresAt = now + share.ttlDays * DAY_MS;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const id = newId();
+    const id = options.newId();
     try {
       await env.DB.prepare(
         "INSERT INTO shares (id, ciphertext, iv, salt, iterations, auth_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -196,8 +242,12 @@ async function shareMeta(env: Env, id: string, now: number): Promise<Response> {
 }
 
 async function openShare(request: Request, env: Env, id: string, now: number): Promise<Response> {
-  if (!(await env.OPEN_LIMITER.limit({ key: clientIp(request) })).success) {
-    throw new HttpError(429, "Too many attempts. Wait a minute and try again.");
+  // Per client, and per link so a botnet can't pool its guesses on one share.
+  if (!(await env.OPEN_LIMITER.limit({ key: clientKey(request) })).success) {
+    throw new HttpError(429, TOO_MANY_ATTEMPTS);
+  }
+  if (!(await env.SHARE_OPEN_LIMITER.limit({ key: `share:${id}` })).success) {
+    throw new HttpError(429, TOO_MANY_ATTEMPTS);
   }
   const body = await readJson(request);
   if (decodedLength(body.auth, "auth") !== SHARE_AUTH_BYTES) {
@@ -224,7 +274,10 @@ export async function handleApi(
   try {
     if (pathname === "/api/shares") {
       if (request.method !== "POST") throw new HttpError(405, "Method not allowed.");
-      return await createShare(request, env, now, options.newId ?? newShareId);
+      return await createShare(request, env, now, {
+        newId: options.newId ?? newShareId,
+        storageCapBytes: options.storageCapBytes ?? SHARE_STORAGE_CAP_BYTES,
+      });
     }
     const match = pathname.match(SHARE_API_PATH);
     const id = match?.[1];

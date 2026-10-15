@@ -26,11 +26,17 @@
       "migrations_dir": "migrations"
     }
   ],
-  // Per-IP limits; the key is the client IP. namespace_id is any number
-  // unique within the Cloudflare account.
+  // CREATE_LIMITER and OPEN_LIMITER are per client (the IP, or its /64 for
+  // IPv6); SHARE_OPEN_LIMITER is per link. namespace_id is any number unique
+  // within the Cloudflare account.
   "ratelimits": [
     { "name": "CREATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
-    { "name": "OPEN_LIMITER", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } }
+    { "name": "OPEN_LIMITER", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } },
+    {
+      "name": "SHARE_OPEN_LIMITER",
+      "namespace_id": "1003",
+      "simple": { "limit": 10, "period": 60 }
+    }
   ],
   // Daily purge of expired shares (UTC).
   "triggers": { "crons": ["17 3 * * *"] },
