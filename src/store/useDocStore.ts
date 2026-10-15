@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
-  DEFAULT_SECTION_SLUG,
   type DocumentBase,
   getTemplate,
   type Section,
   type SplitSection,
+  UNTITLED_SECTION_NAME,
 } from "@/shared";
 
 export type UiTheme = "light" | "dark" | "system";
@@ -34,6 +34,8 @@ interface DocActions {
   addCustomSection: (name: string) => void;
   updateSection: (id: string, markdown: string) => void;
   removeSection: (id: string) => void;
+  /** Put a just-removed section back where it was. */
+  undoRemove: (id: string) => void;
   restoreSection: (id: string) => void;
   deleteForever: (id: string) => void;
   resetSection: (id: string) => void;
@@ -60,6 +62,46 @@ function sectionFromTemplate(slug: string): Section | null {
     isCustom: false,
   };
 }
+
+/** The empty section a fresh document starts with; it names itself from its first heading. */
+function blankSection(): Section {
+  return {
+    id: crypto.randomUUID(),
+    slug: "custom",
+    name: UNTITLED_SECTION_NAME,
+    markdown: "",
+    isCustom: true,
+    autoName: true,
+  };
+}
+
+const isUntouchedBlank = (section: Section) =>
+  section.autoName === true && section.markdown.trim() === "";
+
+/** Adding to a document that's just one untouched blank section replaces that section. */
+function withAdded(sections: Section[], section: Section): Section[] {
+  const [only] = sections;
+  const kept = sections.length === 1 && only && isUntouchedBlank(only) ? [] : sections;
+  return [...kept, section];
+}
+
+/** The document always has a section to type into, and a valid selection. */
+function withSections<T extends Pick<DocState, "sections" | "selectedId">>(state: T): T {
+  if (state.sections.length === 0) {
+    const blank = blankSection();
+    return { ...state, sections: [blank], selectedId: blank.id };
+  }
+  if (!state.sections.some((s) => s.id === state.selectedId)) {
+    return { ...state, selectedId: state.sections[0]?.id ?? null };
+  }
+  return state;
+}
+
+/** Recent deletions, for Undo. In memory only: Undo lasts as long as its toast. */
+const removals = new Map<
+  string,
+  { section: Section; index: number; placeholderId: string | null }
+>();
 
 /*
  * Deleted sections are kept for restoring, newest first. Imports move a
@@ -142,11 +184,11 @@ const guardedStorage: Storage = {
 };
 
 function initialState(): DocState {
-  const first = sectionFromTemplate(DEFAULT_SECTION_SLUG);
+  const first = blankSection();
   return {
-    sections: first ? [first] : [],
+    sections: [first],
     trash: [],
-    selectedId: first?.id ?? null,
+    selectedId: first.id,
     uiTheme: "light",
     previewRatio: 0.5,
     sidebarCollapsed: false,
@@ -170,7 +212,7 @@ export const useDocStore = create<DocStore>()(
         const section = sectionFromTemplate(slug);
         if (!section) return;
         set((state) => ({
-          sections: [...state.sections, section],
+          sections: withAdded(state.sections, section),
           selectedId: section.id,
         }));
       },
@@ -186,7 +228,7 @@ export const useDocStore = create<DocStore>()(
           isCustom: true,
         };
         set((state) => ({
-          sections: [...state.sections, section],
+          sections: withAdded(state.sections, section),
           selectedId: section.id,
         }));
       },
@@ -199,11 +241,46 @@ export const useDocStore = create<DocStore>()(
 
       removeSection: (id) => {
         set((state) => {
-          const section = state.sections.find((s) => s.id === id);
+          const index = state.sections.findIndex((s) => s.id === id);
+          const section = state.sections[index];
           if (!section) return state;
-          const sections = state.sections.filter((s) => s.id !== id);
-          const selectedId = state.selectedId === id ? (sections[0]?.id ?? null) : state.selectedId;
-          return { sections, trash: capTrash([section, ...state.trash]), selectedId };
+          let sections = state.sections.filter((s) => s.id !== id);
+          let placeholderId: string | null = null;
+          if (sections.length === 0) {
+            // Never leave the editor with nothing to type into.
+            const blank = blankSection();
+            sections = [blank];
+            placeholderId = blank.id;
+          }
+          removals.set(id, { section, index, placeholderId });
+          const selectedId =
+            state.selectedId === id
+              ? (sections[Math.min(index, sections.length - 1)]?.id ?? null)
+              : state.selectedId;
+          // An empty section isn't worth keeping in Deleted sections.
+          const trash = isUntouchedBlank(section)
+            ? state.trash
+            : capTrash([section, ...state.trash]);
+          return { sections, trash, selectedId };
+        });
+      },
+
+      undoRemove: (id) => {
+        const removal = removals.get(id);
+        if (!removal) return;
+        removals.delete(id);
+        set((state) => {
+          if (state.sections.some((s) => s.id === id)) return state; // restored already
+          const sections = state.sections.filter(
+            (s) => !(s.id === removal.placeholderId && isUntouchedBlank(s)),
+          );
+          const at = Math.min(removal.index, sections.length);
+          sections.splice(at, 0, removal.section);
+          return {
+            sections,
+            trash: state.trash.filter((s) => s.id !== id),
+            selectedId: id,
+          };
         });
       },
 
@@ -213,7 +290,7 @@ export const useDocStore = create<DocStore>()(
           if (!section) return state;
           return {
             trash: state.trash.filter((s) => s.id !== id),
-            sections: [...state.sections, section],
+            sections: withAdded(state.sections, section),
             selectedId: section.id,
           };
         });
@@ -249,7 +326,10 @@ export const useDocStore = create<DocStore>()(
 
       selectSection: (id) => set({ selectedId: id }),
 
-      resetDocument: () => set(initialState()),
+      resetDocument: () => {
+        removals.clear();
+        set(initialState());
+      },
 
       setUiTheme: (uiTheme) => set({ uiTheme }),
 
@@ -265,10 +345,10 @@ export const useDocStore = create<DocStore>()(
           markdown: section.markdown,
           isCustom: true,
         }));
+        removals.clear();
         set((state) => ({
-          sections,
-          trash: capTrash([...state.sections, ...state.trash]),
-          selectedId: sections[0]?.id ?? null,
+          ...withSections({ sections, selectedId: sections[0]?.id ?? null }),
+          trash: capTrash([...state.sections.filter((s) => !isUntouchedBlank(s)), ...state.trash]),
           documentBase: base,
           epoch: state.epoch + 1,
         }));
@@ -287,6 +367,9 @@ export const useDocStore = create<DocStore>()(
         sidebarCollapsed: state.sidebarCollapsed,
         documentBase: state.documentBase,
       }),
+      // Saved documents from before "never empty" may have no sections left.
+      merge: (persisted, current) =>
+        withSections({ ...current, ...(persisted as Partial<DocState>) }),
       migrate: (persisted, version) => {
         const state = persisted as Partial<DocState>;
         if (version < 2) {

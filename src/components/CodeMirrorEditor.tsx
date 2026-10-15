@@ -117,7 +117,7 @@ export function CodeMirrorEditor({ initialDoc, isDark, onChange }: Props) {
         syntaxHighlighting(isDark ? darkHighlight : lightHighlight),
         chromeTheme(isDark),
         EditorView.lineWrapping,
-        placeholder("Write your markdown here…"),
+        placeholder("Start writing Markdown, or pick a template from the sidebar…"),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) onChangeRef.current(update.state.doc.toString());
         }),

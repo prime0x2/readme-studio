@@ -26,14 +26,16 @@ function reset() {
 describe("useDocStore", () => {
   beforeEach(reset);
 
-  it("starts with the Title and Description section selected", () => {
+  it("starts with one blank, auto-named section selected", () => {
     const { sections, selectedId } = useDocStore.getState();
     expect(sections).toHaveLength(1);
-    expect(sections[0]?.slug).toBe("title-and-description");
+    expect(sections[0]).toMatchObject({ name: "Untitled", markdown: "", autoName: true });
     expect(selectedId).toBe(sections[0]?.id);
   });
 
   it("imports a README, keeping the old sections restorable", () => {
+    const firstId = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(firstId, "# Draft");
     const before = useDocStore.getState().sections;
     const base = { raw: "https://raw.githubusercontent.com/o/r/main/README.md" };
     useDocStore.getState().importDocument(
@@ -123,10 +125,26 @@ describe("useDocStore", () => {
 
   it("adds a template section and selects it", () => {
     useDocStore.getState().addSection("installation");
+    useDocStore.getState().addSection("license");
     const { sections, selectedId } = useDocStore.getState();
-    expect(sections).toHaveLength(2);
-    expect(sections[1]?.slug).toBe("installation");
+    expect(sections.map((s) => s.slug)).toEqual(["installation", "license"]);
     expect(selectedId).toBe(sections[1]?.id);
+  });
+
+  it("replaces the untouched blank section when the first real section is added", () => {
+    useDocStore.getState().addSection("installation");
+    expect(useDocStore.getState().sections.map((s) => s.slug)).toEqual(["installation"]);
+    useDocStore.getState().resetDocument();
+    useDocStore.getState().addCustomSection("Notes");
+    expect(useDocStore.getState().sections.map((s) => s.name)).toEqual(["Notes"]);
+  });
+
+  it("keeps the blank section once you've written in it", () => {
+    const id = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(id, "# Aurora");
+    useDocStore.getState().addSection("installation");
+    expect(useDocStore.getState().sections.map((s) => s.id)).toHaveLength(2);
+    expect(useDocStore.getState().sections[0]?.id).toBe(id);
   });
 
   it("does not duplicate a template — selects the existing one instead", () => {
@@ -134,7 +152,7 @@ describe("useDocStore", () => {
     const firstId = useDocStore.getState().selectedId;
     useDocStore.getState().selectSection(null);
     useDocStore.getState().addSection("installation");
-    expect(useDocStore.getState().sections).toHaveLength(2);
+    expect(useDocStore.getState().sections).toHaveLength(1);
     expect(useDocStore.getState().selectedId).toBe(firstId);
   });
 
@@ -156,23 +174,93 @@ describe("useDocStore", () => {
     const id = useDocStore.getState().sections[0]?.id ?? "";
     useDocStore.getState().updateSection(id, "# Precious edits");
     useDocStore.getState().removeSection(id);
-    expect(useDocStore.getState().sections).toHaveLength(0);
     expect(useDocStore.getState().trash).toHaveLength(1);
 
     useDocStore.getState().restoreSection(id);
     expect(useDocStore.getState().trash).toHaveLength(0);
-    expect(useDocStore.getState().sections[0]?.markdown).toBe("# Precious edits");
+    // the blank stand-in was untouched, so the restored section replaces it
+    expect(useDocStore.getState().sections.map((s) => s.markdown)).toEqual(["# Precious edits"]);
     expect(useDocStore.getState().selectedId).toBe(id);
+  });
+
+  it("never leaves the document empty: deleting the last section leaves a blank one", () => {
+    const id = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(id, "# Only one");
+    useDocStore.getState().removeSection(id);
+    const { sections, selectedId } = useDocStore.getState();
+    expect(sections).toHaveLength(1);
+    expect(sections[0]).toMatchObject({ markdown: "", autoName: true });
+    expect(selectedId).toBe(sections[0]?.id);
+  });
+
+  it("doesn't put an empty blank section in Deleted sections", () => {
+    const id = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().removeSection(id);
+    expect(useDocStore.getState().trash).toHaveLength(0);
+    expect(useDocStore.getState().sections).toHaveLength(1);
+  });
+
+  it("selects the neighbour of a deleted section", () => {
+    useDocStore.getState().addSection("installation");
+    useDocStore.getState().addSection("usage-examples");
+    useDocStore.getState().addSection("license");
+    const [, usage, license] = useDocStore.getState().sections.map((s) => s.id);
+    useDocStore.getState().removeSection(usage ?? "");
+    expect(useDocStore.getState().selectedId).toBe(license);
+  });
+
+  it("undoes a delete at the original position", () => {
+    useDocStore.getState().addSection("installation");
+    useDocStore.getState().addSection("usage-examples");
+    useDocStore.getState().addSection("license");
+    const ids = useDocStore.getState().sections.map((s) => s.id);
+    useDocStore.getState().removeSection(ids[1] ?? "");
+    useDocStore.getState().undoRemove(ids[1] ?? "");
+    expect(useDocStore.getState().sections.map((s) => s.id)).toEqual(ids);
+    expect(useDocStore.getState().trash).toHaveLength(0);
+    expect(useDocStore.getState().selectedId).toBe(ids[1]);
+  });
+
+  it("undoing a delete of the last section drops the blank stand-in", () => {
+    const id = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(id, "# Keep me");
+    useDocStore.getState().removeSection(id);
+    useDocStore.getState().undoRemove(id);
+    expect(useDocStore.getState().sections.map((s) => s.id)).toEqual([id]);
+  });
+
+  it("keeps the stand-in if you already wrote in it before undoing", () => {
+    const id = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(id, "# Old");
+    useDocStore.getState().removeSection(id);
+    const standIn = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(standIn, "# New");
+    useDocStore.getState().undoRemove(id);
+    expect(useDocStore.getState().sections.map((s) => s.id)).toEqual([id, standIn]);
+  });
+
+  it("ignores undo after the section was restored another way, or twice", () => {
+    useDocStore.getState().addSection("installation");
+    useDocStore.getState().addSection("usage-examples");
+    const usage = useDocStore.getState().sections[1]?.id ?? "";
+    useDocStore.getState().removeSection(usage);
+    useDocStore.getState().restoreSection(usage);
+    useDocStore.getState().undoRemove(usage);
+    useDocStore.getState().undoRemove(usage);
+    expect(useDocStore.getState().sections.filter((s) => s.id === usage)).toHaveLength(1);
   });
 
   it("deletes forever from trash", () => {
     const id = useDocStore.getState().sections[0]?.id ?? "";
+    useDocStore.getState().updateSection(id, "# To delete");
     useDocStore.getState().removeSection(id);
+    expect(useDocStore.getState().trash).toHaveLength(1);
     useDocStore.getState().deleteForever(id);
     expect(useDocStore.getState().trash).toHaveLength(0);
   });
 
   it("resets a template section back to its template and bumps the epoch", () => {
+    useDocStore.getState().addSection("title-and-description");
     const id = useDocStore.getState().sections[0]?.id ?? "";
     const before = useDocStore.getState().epoch;
     useDocStore.getState().updateSection(id, "scribbles");
@@ -191,6 +279,7 @@ describe("useDocStore", () => {
 
   it("reorders sections by id", () => {
     useDocStore.getState().addSection("installation");
+    useDocStore.getState().addSection("usage-examples");
     useDocStore.getState().addSection("license");
     const [a, b, c] = useDocStore.getState().sections.map((s) => s.id);
     useDocStore.getState().reorderSections(c ?? "", a ?? "");
@@ -202,8 +291,8 @@ describe("useDocStore", () => {
     const persisted = memory.get("readmestudio:doc:v1");
     expect(persisted).toBeTruthy();
     const parsed = JSON.parse(persisted ?? "{}");
-    expect(parsed.state.sections).toHaveLength(2);
-    expect(parsed.state.sections[1].slug).toBe("installation");
+    expect(parsed.state.sections).toHaveLength(1);
+    expect(parsed.state.sections[0].slug).toBe("installation");
     // epoch is transient and must not be persisted
     expect(parsed.state.epoch).toBeUndefined();
   });
@@ -214,7 +303,25 @@ describe("useDocStore", () => {
     useDocStore.getState().resetDocument();
     const { sections, trash } = useDocStore.getState();
     expect(sections).toHaveLength(1);
-    expect(sections[0]?.slug).toBe("title-and-description");
+    expect(sections[0]).toMatchObject({ markdown: "", autoName: true });
     expect(trash).toHaveLength(0);
+  });
+
+  it("gives an imported empty README a blank section", () => {
+    useDocStore.getState().importDocument([], null);
+    expect(useDocStore.getState().sections).toHaveLength(1);
+    expect(useDocStore.getState().sections[0]?.autoName).toBe(true);
+  });
+
+  it("loads an old saved document with no sections as one blank section", async () => {
+    memory.set(
+      "readmestudio:doc:v1",
+      JSON.stringify({ state: { sections: [], trash: [], selectedId: null }, version: 2 }),
+    );
+    await useDocStore.persist.rehydrate();
+    const { sections, selectedId } = useDocStore.getState();
+    expect(sections).toHaveLength(1);
+    expect(sections[0]?.autoName).toBe(true);
+    expect(selectedId).toBe(sections[0]?.id);
   });
 });
