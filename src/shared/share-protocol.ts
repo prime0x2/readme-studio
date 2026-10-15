@@ -101,15 +101,34 @@ export function fromBase64(text: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-function isDocumentBase(value: unknown): value is DocumentBase {
-  if (typeof value !== "object" || value === null) return false;
-  const base = value as Record<string, unknown>;
-  return (
-    typeof base.raw === "string" &&
-    ["rawRoot", "web", "webRoot"].every(
-      (key) => base[key] === undefined || typeof base[key] === "string",
-    )
-  );
+const BASE_KEYS = ["raw", "rawRoot", "web", "webRoot"] as const;
+
+function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The payload is attacker-controlled (anyone can seal one), and its base
+ * becomes the prefix of resolved links, so only absolute http(s) URLs pass.
+ * Copies the known keys into a fresh object; any bad field drops the whole base.
+ */
+function parseDocumentBase(value: unknown): DocumentBase | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  const base: Partial<Record<(typeof BASE_KEYS)[number], string>> = {};
+  for (const key of BASE_KEYS) {
+    const field = input[key];
+    if (field === undefined) continue;
+    if (!isHttpUrl(field)) return null;
+    base[key] = field;
+  }
+  return base.raw === undefined ? null : { ...base, raw: base.raw };
 }
 
 /** Validates decrypted JSON; throws on anything that isn't a v1 payload. */
@@ -123,6 +142,6 @@ export function parseSharePayload(value: unknown): SharePayload {
     v: 1,
     markdown: payload.markdown,
     title: typeof payload.title === "string" ? payload.title : null,
-    base: isDocumentBase(payload.base) ? payload.base : null,
+    base: parseDocumentBase(payload.base),
   };
 }
