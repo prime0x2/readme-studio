@@ -1,11 +1,12 @@
 // One-off: regenerate the README images in .github/assets/ from the real app.
 //
-//   pnpm build && pnpm exec vite preview --port 3055     # in one terminal
+//   pnpm build && pnpm dev:api                           # in one terminal
 //   node scripts/make-readme-images.mjs [app-url]        # in another
 //
 // Screenshots a sample document in the running app (light and dark), prints
-// it through the app's own PDF path, and composes the cover and screenshot
-// cards with Puppeteer. Needs `pdftoppm` (poppler-utils) for the PDF page.
+// it through the app's own PDF path, creates a share link against the local
+// Worker and D1, and composes the cover and screenshot cards with Puppeteer.
+// Needs `pdftoppm` (poppler-utils) for the PDF page.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +14,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 
-const APP = process.argv[2] ?? "http://localhost:3055";
+const APP = process.argv[2] ?? "http://localhost:8787";
+const SITE = "https://readme.prime0x2.dev";
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, "../.github/assets");
 mkdirSync(OUT, { recursive: true });
@@ -125,6 +127,54 @@ async function appShot(uiTheme) {
   return { png, pdf };
 }
 
+/** The Share dialog after creating a link, and the page the recipient opens. */
+async function shareShots() {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
+  await page.goto(APP, { waitUntil: "networkidle0" });
+  await page.evaluate(
+    (doc) => localStorage.setItem("readmestudio:doc:v1", doc),
+    storedDoc("light"),
+  );
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForSelector(".mermaid-diagram svg", { timeout: 20000 });
+  const clickButton = (label) =>
+    page.evaluate((text) => {
+      [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === text).click();
+    }, label);
+  await clickButton("Share");
+  const [password, confirm] = await page.$$('[role="dialog"] input[type="password"]');
+  await password.type("aurora-launch");
+  await confirm.type("aurora-launch");
+  await page.select('[role="dialog"] select', "7");
+  await clickButton("Create link");
+  await page.waitForSelector('[role="dialog"] input[readonly]', { timeout: 30000 });
+  const url = await page.$eval('[role="dialog"] input[readonly]', (input) => input.value);
+  // Show the link as it looks in production.
+  const publicPath = new URL(url).pathname;
+  await page.$eval(
+    '[role="dialog"] input[readonly]',
+    (input, shown) => {
+      input.value = shown;
+      input.blur();
+    },
+    SITE + publicPath,
+  );
+  await page.evaluate(() => document.fonts.ready);
+  await new Promise((r) => setTimeout(r, 400));
+  const dialog = await page.screenshot({ type: "png" });
+
+  await page.setViewport({ width: 960, height: 520, deviceScaleFactor: 2 });
+  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+  await page.goto(url, { waitUntil: "networkidle0" });
+  await page.waitForSelector('input[type="password"]');
+  await page.evaluate(() => document.fonts.ready);
+  await new Promise((r) => setTimeout(r, 300));
+  const locked = await page.screenshot({ type: "png" });
+  await page.close();
+  return { dialog, locked, publicPath };
+}
+
 const dataUrl = (buf) => `data:image/png;base64,${Buffer.from(buf).toString("base64")}`;
 
 const FONTS = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">`;
@@ -132,7 +182,7 @@ const FONTS = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?fa
 const BOOK = `<svg viewBox="0 0 32 32" width="100%" height="100%"><path d="M16 9.5c-1.8-1.4-4.2-1.9-6.5-1.6v13.4c2.3-.3 4.7.2 6.5 1.6 1.8-1.4 4.2-1.9 6.5-1.6V7.9c-2.3-.3-4.7.2-6.5 1.6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 9.5v13.4" stroke="currentColor" stroke-width="1.8"/></svg>`;
 
 /** A browser window around a screenshot. */
-function windowFrame(src, { dark = false, width }) {
+function windowFrame(src, { dark = false, width, address = "readme.prime0x2.dev" }) {
   const bar = dark ? "#1c1917" : "#ffffff";
   const url = dark ? "#292524" : "#f5f5f4";
   const urlText = dark ? "#a8a29e" : "#78716c";
@@ -142,7 +192,7 @@ function windowFrame(src, { dark = false, width }) {
       <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></span>
       <span style="width:12px;height:12px;border-radius:50%;background:#febc2e"></span>
       <span style="width:12px;height:12px;border-radius:50%;background:#28c840"></span>
-      <div style="margin:0 auto;transform:translateX(-30px);background:${url};color:${urlText};font:500 13px 'IBM Plex Mono',monospace;padding:5px 60px;border-radius:7px">readme.prime0x2.dev</div>
+      <div style="margin:0 auto;transform:translateX(-30px);background:${url};color:${urlText};font:500 13px 'IBM Plex Mono',monospace;padding:5px 60px;border-radius:7px">${address}</div>
     </div>
     <img src="${src}" style="display:block;width:100%">
   </div>`;
@@ -166,6 +216,7 @@ async function render(html, width, height, file, scale = 2) {
 
 const light = await appShot("light");
 const dark = await appShot("dark");
+const share = await shareShots();
 
 const BG = `background:
   radial-gradient(circle at 15% 0%, rgba(255,255,255,.22), transparent 45%),
@@ -231,6 +282,26 @@ await render(
   1280,
   800,
   "pdf-export.png",
+);
+
+// ── Share-links card: the dialog, and what the recipient sees ───────
+await render(
+  `<div style="position:relative;width:1280px;height:800px;overflow:hidden;background:radial-gradient(circle at 0% 100%, #fde3cc, transparent 55%),#f5f0ea">
+    <div style="position:absolute;left:72px;top:96px;width:340px;color:#1c1917">
+      <div style="font:500 14px 'IBM Plex Mono',monospace;color:#bf440e;letter-spacing:.08em">SHARE LINKS</div>
+      <div style="font-family:Fraunces,serif;font-weight:600;font-size:40px;line-height:1.15;margin-top:12px">Encrypted in your browser. Opened with a password.</div>
+      <p style="font-size:18px;line-height:1.6;color:#57534e;margin-top:18px">The server only ever stores ciphertext. Links expire after 1, 7 or 30 days.</p>
+    </div>
+    <div style="position:absolute;left:452px;top:64px">
+      ${windowFrame(dataUrl(share.dialog), { width: 760 })}
+    </div>
+    <div style="position:absolute;left:600px;top:400px">
+      ${windowFrame(dataUrl(share.locked), { width: 560, address: `readme.prime0x2.dev${share.publicPath}` })}
+    </div>
+  </div>`,
+  1280,
+  800,
+  "share-links.png",
 );
 
 await browser.close();

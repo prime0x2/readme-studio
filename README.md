@@ -62,6 +62,12 @@ ReadmeStudio keeps the section-based editor and makes the **exports first-class*
     <td align="center"><sub>Dark mode, with a live Mermaid diagram</sub></td>
     <td align="center"><sub>The exported PDF: vector text, diagrams and tables</sub></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src=".github/assets/share-links.png" alt="The Share dialog with a new link, and the password prompt the recipient sees"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>Password-protected share links, encrypted in your browser</sub></td>
+  </tr>
 </table>
 
 ## 🔗 Share any GitHub README
