@@ -22,4 +22,6 @@ export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
   CREATE_LIMITER: RateLimiter;
   OPEN_LIMITER: RateLimiter;
+  /** Keyed by share id, so guesses on one link are limited across all IPs. */
+  SHARE_OPEN_LIMITER: RateLimiter;
 }

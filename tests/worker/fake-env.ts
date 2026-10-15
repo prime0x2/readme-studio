@@ -38,6 +38,7 @@ export function createTestEnv(overrides: Partial<Env> = {}) {
     ASSETS: { fetch: async () => new Response("asset", { headers: { "x-from": "assets" } }) },
     CREATE_LIMITER: createLimiter(),
     OPEN_LIMITER: createLimiter(),
+    SHARE_OPEN_LIMITER: createLimiter(),
     ...overrides,
   };
   return { env, db };
