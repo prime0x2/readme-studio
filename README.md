@@ -36,7 +36,7 @@
 
 [readme.so](https://readme.so) made writing READMEs easy. But the moment you need that README somewhere other than GitHub (a PDF for a client, a Word doc for a handover), most tools hand you a blurry screenshot or lose half the styling.
 
-ReadmeStudio keeps the section-based editor and makes the **exports first-class**. The PDF is printed by your browser from the *same* HTML and CSS as the preview, so they can't drift apart. The DOCX is built natively from the Markdown, with real Word headings, tables and code. There's no server: your document never leaves your machine.
+ReadmeStudio keeps the section-based editor and makes the **exports first-class**. The PDF is printed by your browser from the *same* HTML and CSS as the preview, so they can't drift apart. The DOCX is built natively from the Markdown, with real Word headings, tables and code. Your document never leaves your machine unless you create a share link, and then only an encrypted copy is uploaded: the server never sees the document or the password.
 
 ## ✨ Features
 
@@ -138,10 +138,11 @@ pnpm dev         # http://localhost:3000
 
 ## 🧪 Testing
 
-136 tests, including real-browser suites that drive headless Chromium:
+167 tests, including real-browser suites that drive headless Chromium:
 
 - **GitHub parity:** `tests/github-parity/` renders each fixture twice, once from GitHub's own HTML (GitHub's Markdown API, styled with `github-markdown-css`) and once through our pipeline with the app's real CSS. It then compares which images are shown, their sizes, floats and alignment, which images share a line, and table shapes, in light and dark.
 - **Mermaid:** `tests/mermaid/` runs the real renderer and checks that labels are visible, diagrams follow the theme, invalid diagrams stay code and diagram labels can't run script.
+- **Share links:** `tests/share/` and `tests/worker/` cover the wire format, the browser crypto, the client and the Worker API handlers.
 - **PDF and DOCX:** the print path is rendered to real PDFs (A4, page numbers, diagrams, Bengali); DOCX output is checked for structure, tables, images and fonts.
 
 <details>
