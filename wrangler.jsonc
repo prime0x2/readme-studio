@@ -16,13 +16,14 @@
     "run_worker_first": ["/api/*"]
   },
   // Encrypted share links (schema in migrations/). Create the database once
-  // with `pnpm exec wrangler d1 create readme-studio` and paste its id here.
+  // with `pnpm exec wrangler d1 create readme-studio` and paste its id here
+  // (forks: create your own and replace this one).
   // Local dev (`pnpm dev:api`) uses a local copy and ignores the id.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "readme-studio",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "1887af86-7c2e-43ed-8cf2-d408b539e6b9",
       "migrations_dir": "migrations"
     }
   ],
