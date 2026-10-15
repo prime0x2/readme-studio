@@ -2,7 +2,9 @@
 
 All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/readme-studio/releases>
 
-## Unreleased
+## [2.1.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.1.0) — 2026-10-15
+
+**Share without giving up privacy.** Send a README to anyone with a password-protected link that's encrypted before it leaves your browser. The editor also starts from a blank page now, and never leaves you without a section to type in.
 
 ### ✨ New
 
@@ -12,6 +14,10 @@ All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/read
 
 - **Start from a blank page.** New documents open with one empty section instead of the Title and Description template; templates are still a click away in the sidebar. A blank section names itself after its first heading as you type.
 - **The editor never runs out of sections.** Deleting the last section leaves a fresh blank one, so you can keep typing even with the sidebar hidden. Deleting a section now shows an **Undo** button.
+
+### 📦 Under the hood
+
+- Fixed all open Dependabot alerts: Mermaid 12.2 (which brings KaTeX 0.18), wrangler 4.151, and a patched `source-map-js` for the dev tooling.
 
 ## [2.0.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.0.0) — 2026-09-27
 
