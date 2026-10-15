@@ -292,29 +292,11 @@ Document defaults: A4, ~2 cm margins, sans body font (e.g. Calibri/Inter), mono 
 
 ---
 
-## 10. Future Feature — Share by Link (specified now, built later)
+## 10. Share by Link (built)
 
-> Documented in README roadmap; **not** implemented in v1. The v1 architecture (Node API on the VPS) is deliberately ready for it.
+Built as **password-protected, end-to-end encrypted snapshots** on Cloudflare Workers + D1 rather than the VPS/SQLite design that was planned here. Snapshots are immutable, expire after 1 / 7 / 30 days (default 7, hard cap), and are purged daily. Anyone can create them; creation and unlock attempts are rate-limited per IP. The viewer shows only the document.
 
-**Semantics — read-only snapshot.** Sharing freezes the document at that moment and returns a link. The link opens a server-rendered read-only page (same `preview.css`) with **Download MD / PDF / DOCX** and **Clone to my editor** (loads the snapshot into the visitor's localStorage doc, with overwrite confirm). Snapshots are immutable; re-sharing creates a new link.
-
-**Retention.** Creator picks TTL at share time: **1 / 7 / 30 days (default 7)** — hard cap, no extension. Expired snapshots are purged by a scheduled job (node-cron in the API or PM2 cron) and return a friendly 410 page.
-
-**Data model & storage.** SQLite (`better-sqlite3`) on the VPS — zero extra infrastructure:
-
-```
-shares(id TEXT PK,            -- nanoid(12), unguessable
-       markdown TEXT,         -- ≤ 1 MB
-       title TEXT,
-       created_at INTEGER,
-       expires_at INTEGER)    -- indexed for purge
-```
-
-**API.** `POST /api/v1/share {markdown, title, ttlDays}` → `{ url, expiresAt }` · `GET /s/:id` (rendered page) · `GET /api/v1/share/:id` (raw, for clone).
-
-**Abuse posture.** No accounts. Rate-limited creation per IP; 1 MB size cap; sanitized rendering (same pipeline); `noindex` on shared pages; IDs unguessable. *Later hardening candidates:* private deletion URL returned at creation, `/report` takedown endpoint.
-
----
+Code: `src/shared/share-protocol.ts`, `src/lib/share/`, `src/components/ShareDialog.tsx`, `src/share/SharePage.tsx`, `worker/`, `migrations/`.
 
 ## 11. Testing (v1: targeted; e2e deferred)
 

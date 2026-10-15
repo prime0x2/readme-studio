@@ -2,6 +2,12 @@
 
 All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/readme-studio/releases>
 
+## Unreleased
+
+### ✨ New
+
+- **Password-protected share links.** Click **Share** in the editor, set a password and an expiry (1, 7 or 30 days) and get a short `/s/…` link. The document is encrypted in your browser before upload; the server stores only ciphertext and never sees the document or the password. Whoever opens the link types the password and sees just the document, full screen. Wrong passwords are rate-limited, and expired links are deleted daily.
+
 ## [2.0.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.0.0) — 2026-09-27
 
 **No servers, just the browser.** ReadmeStudio is now a fully client-side app. Editing, preview, PDF and DOCX export all run in your browser, so your README never leaves your machine. It's served from Cloudflare's edge at **<https://readme.prime0x2.dev>** and is now open source under the MIT license.
