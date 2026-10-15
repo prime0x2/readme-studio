@@ -59,4 +59,56 @@ describe("share protocol", () => {
     expect(() => parseSharePayload({ v: 1 })).toThrow();
     expect(() => parseSharePayload("x")).toThrow();
   });
+
+  describe("document base", () => {
+    const raw = "https://raw.githubusercontent.com/o/r/main/README.md";
+    const baseOf = (base: unknown) => parseSharePayload({ v: 1, markdown: "x", base }).base;
+
+    it("keeps http(s) bases with any of the optional keys", () => {
+      const full = {
+        raw,
+        rawRoot: "https://raw.githubusercontent.com/o/r/main/",
+        web: "https://github.com/o/r/blob/main/README.md",
+        webRoot: "http://github.com/o/r/blob/main/",
+      };
+      expect(baseOf(full)).toEqual(full);
+      expect(baseOf({ raw })).toEqual({ raw });
+      expect(baseOf({ raw, web: undefined })).toEqual({ raw });
+    });
+
+    it("rejects the whole base when any URL isn't absolute http(s)", () => {
+      for (const hostile of [
+        "javascript://x/%0aalert(document.domain)//",
+        "JavaScript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "//evil.example/README.md",
+        "docs/README.md",
+        "/README.md",
+        "",
+        "not a url",
+      ]) {
+        expect(baseOf({ raw: hostile }), hostile).toBeNull();
+        for (const key of ["rawRoot", "web", "webRoot"]) {
+          expect(baseOf({ raw, [key]: hostile }), `${key}: ${hostile}`).toBeNull();
+        }
+      }
+      expect(baseOf({ raw, web: null })).toBeNull();
+      expect(baseOf({ raw, web: 5 })).toBeNull();
+    });
+
+    it("drops extra keys and copies into a fresh object", () => {
+      const input = { raw, web: "https://github.com/o/r", evil: "javascript:alert(1)" };
+      const base = baseOf(input);
+      expect(base).toEqual({ raw, web: "https://github.com/o/r" });
+      expect(base).not.toBe(input);
+    });
+
+    it("treats null, arrays and missing raw as no base", () => {
+      expect(baseOf(null)).toBeNull();
+      expect(baseOf(undefined)).toBeNull();
+      expect(baseOf([raw])).toBeNull();
+      expect(baseOf({ web: "https://github.com/o/r" })).toBeNull();
+      expect(baseOf("https://github.com/o/r")).toBeNull();
+    });
+  });
 });

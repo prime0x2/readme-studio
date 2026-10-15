@@ -81,6 +81,26 @@ describe("relative URL resolution", () => {
     expect(html).toContain('src="https://raw.githubusercontent.com/o/r/main/docs/light.png"');
   });
 
+  it("never turns a relative URL into a non-http(s) one, even with a hostile base", async () => {
+    const hostile: DocumentBase = {
+      raw: "javascript://x/%0aalert(document.domain)//",
+      rawRoot: "data:text/html,x/",
+      web: "javascript://x/%0aalert(document.domain)//",
+      webRoot: "javascript://x/",
+    };
+    const html = await renderMarkdown(
+      '[Read the docs](docs/intro.md) [root](/LICENSE) ![logo](img/a.png)\n\n<picture><source srcset="dark.png 2x"><img src="light.png"></picture>',
+      { base: hostile },
+    );
+    expect(html).not.toMatch(/javascript:/i);
+    expect(html).not.toMatch(/data:/i);
+    expect(html).toContain('href="docs/intro.md"');
+    expect(html).toContain('src="img/a.png"');
+    expect(html).toContain('srcset="dark.png 2x"');
+    expect(resolveDocumentUrl("docs/intro.md", "link", hostile)).toBe("docs/intro.md");
+    expect(resolveDocumentUrl("/LICENSE", "link", hostile)).toBe("/LICENSE");
+  });
+
   it("does nothing without a base", async () => {
     expect(await renderMarkdown("![a](img/a.png)")).toContain('src="img/a.png"');
   });

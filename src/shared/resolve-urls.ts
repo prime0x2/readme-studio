@@ -18,6 +18,7 @@ export interface DocumentBase {
 }
 
 const ABSOLUTE = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
+const SAFE_PROTOCOLS = new Set(["http:", "https:"]);
 
 /** Resolve one URL from the document; absolute URLs and anchors pass through. */
 export function resolveDocumentUrl(
@@ -30,10 +31,14 @@ export function resolveDocumentUrl(
   const file = kind === "image" ? base.raw : (base.web ?? base.raw);
   const root = kind === "image" ? base.rawRoot : (base.webRoot ?? base.rawRoot);
   try {
-    if (trimmed.startsWith("/")) {
-      return root ? new URL(trimmed.slice(1), root).href : url;
-    }
-    return new URL(trimmed, file).href;
+    if (trimmed.startsWith("/") && !root) return url;
+    const resolved = trimmed.startsWith("/")
+      ? new URL(trimmed.slice(1), root)
+      : new URL(trimmed, file);
+    // This runs after rehype-sanitize, so it must never introduce a scheme
+    // sanitize would have refused: a hostile base such as `javascript://x/`
+    // leaves the URL relative instead.
+    return SAFE_PROTOCOLS.has(resolved.protocol) ? resolved.href : url;
   } catch {
     return url;
   }
