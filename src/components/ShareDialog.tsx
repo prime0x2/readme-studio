@@ -41,16 +41,53 @@ export function ShareDialog({
     ttl: useId(),
     link: useId(),
   };
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Captured during render: autoFocus moves focus before effects run.
+  const [opener] = useState(() => document.activeElement);
+  const working = phase.step === "working";
+  const workingRef = useRef(working);
+  workingRef.current = working;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // Closing mid-request would drop the link, so every close path goes through here.
+  const requestClose = () => {
+    if (!workingRef.current) onCloseRef.current();
+  };
+  const requestCloseRef = useRef(requestClose);
+  requestCloseRef.current = requestClose;
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCloseRef.current();
+      if (event.key === "Escape") {
+        requestCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        ),
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+      const inside = dialogRef.current.contains(active);
+      if (event.shiftKey && (active === first || !inside)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !inside)) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, [opener]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -83,17 +120,16 @@ export function ShareDialog({
     }
   }
 
-  const working = phase.step === "working";
-
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click closes; Esc is handled above
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-stone-950/40 px-4 py-16 backdrop-blur-sm"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={ids.heading}
@@ -114,9 +150,10 @@ export function ShareDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
+            disabled={working}
             aria-label="Close"
-            className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+            className="rounded-lg disabled:opacity-40 p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
           >
             <X size={16} />
           </button>
