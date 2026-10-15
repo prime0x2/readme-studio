@@ -40,7 +40,7 @@ ReadmeStudio keeps the section-based editor and makes the **exports first-class*
 
 ## ✨ Features
 
-- 🧩 **Section-based editing.** A searchable library of section templates (ported and improved from readme.so's MIT-licensed set, plus new ones like Docker, Badges and Monorepo layout). Click to add, drag to reorder, reset to default, restore from trash.
+- 🧩 **Section-based editing.** A searchable library of section templates (ported and improved from readme.so's MIT-licensed set, plus new ones like Docker, Badges and Monorepo layout). Start from a blank page or click a template to add it, drag to reorder, reset to default, delete with undo, restore from trash.
 - 👀 **GitHub-accurate preview.** GFM tables, task lists, Shiki syntax highlighting, badges and inline HTML, `<picture>` dark/light images, `> [!NOTE]` alerts and emoji shortcodes, in light and dark themes plus a raw-Markdown tab. Checked against GitHub's own rendering by the test suite.
 - 📊 **Mermaid diagrams.** ` ```mermaid ` blocks render in the preview, as vector SVG in the PDF and as crisp images in the DOCX. Invalid diagrams fall back to a code block.
 - 📄 **Real PDF export.** Printed by the browser's own engine from the preview's stylesheet: A4, page numbers, smart page breaks, selectable text, working links, vector diagrams, Bengali and other scripts.

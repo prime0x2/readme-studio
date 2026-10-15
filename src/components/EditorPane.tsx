@@ -1,4 +1,6 @@
 import { FileText, RotateCcw, Trash2 } from "lucide-react";
+import { sectionLabel } from "@/shared";
+import { useRemoveSection } from "../lib/useRemoveSection";
 import { useDocStore } from "../store/useDocStore";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 
@@ -6,7 +8,7 @@ export function EditorPane({ isDark }: { isDark: boolean }) {
   const section = useDocStore((s) => s.sections.find((x) => x.id === s.selectedId));
   const updateSection = useDocStore((s) => s.updateSection);
   const resetSection = useDocStore((s) => s.resetSection);
-  const removeSection = useDocStore((s) => s.removeSection);
+  const removeSection = useRemoveSection();
   const epoch = useDocStore((s) => s.epoch);
 
   if (!section) {
@@ -24,7 +26,7 @@ export function EditorPane({ isDark }: { isDark: boolean }) {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center gap-2 border-b border-stone-200 px-4 py-2.5 dark:border-stone-800">
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-stone-800 dark:text-stone-200">
-          {section.name}
+          {sectionLabel(section)}
         </h2>
         {!section.isCustom && (
           <button

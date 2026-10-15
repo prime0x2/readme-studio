@@ -24,6 +24,9 @@ export type {
 export {
   assembleMarkdown,
   extractTitle,
+  firstHeading,
   MARKDOWN_BYTE_LIMIT,
+  sectionLabel,
   slugifyTitle,
+  UNTITLED_SECTION_NAME,
 } from "./types";

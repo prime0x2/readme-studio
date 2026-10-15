@@ -8,6 +8,11 @@ All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/read
 
 - **Password-protected share links.** Click **Share** in the editor, set a password and an expiry (1, 7 or 30 days) and get a short `/s/…` link. The document is encrypted in your browser before upload; the server stores only ciphertext and never sees the document or the password. Whoever opens the link types the password and sees just the document, full screen. Wrong passwords are rate-limited, and expired links are deleted daily.
 
+### 🛠 Improved
+
+- **Start from a blank page.** New documents open with one empty section instead of the Title and Description template; templates are still a click away in the sidebar. A blank section names itself after its first heading as you type.
+- **The editor never runs out of sections.** Deleting the last section leaves a fresh blank one, so you can keep typing even with the sidebar hidden. Deleting a section now shows an **Undo** button.
+
 ## [2.0.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.0.0) — 2026-09-27
 
 **No servers, just the browser.** ReadmeStudio is now a fully client-side app. Editing, preview, PDF and DOCX export all run in your browser, so your README never leaves your machine. It's served from Cloudflare's edge at **<https://readme.prime0x2.dev>** and is now open source under the MIT license.

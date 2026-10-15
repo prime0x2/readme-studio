@@ -16,20 +16,22 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ArchiveRestore, GripVertical, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { sectionTemplates } from "@/shared";
+import { sectionLabel, sectionTemplates } from "@/shared";
+import { useRemoveSection } from "../lib/useRemoveSection";
 import { useDocStore } from "../store/useDocStore";
 
 function SortableSectionRow({ id }: { id: string }) {
   const section = useDocStore((s) => s.sections.find((x) => x.id === id));
   const selectedId = useDocStore((s) => s.selectedId);
   const selectSection = useDocStore((s) => s.selectSection);
-  const removeSection = useDocStore((s) => s.removeSection);
+  const removeSection = useRemoveSection();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
   });
 
   if (!section) return null;
   const selected = selectedId === id;
+  const label = sectionLabel(section);
 
   return (
     <div
@@ -46,7 +48,7 @@ function SortableSectionRow({ id }: { id: string }) {
       <button
         type="button"
         className="cursor-grab touch-none text-stone-400 hover:text-stone-600 active:cursor-grabbing dark:text-stone-600 dark:hover:text-stone-400"
-        aria-label={`Reorder ${section.name}`}
+        aria-label={`Reorder ${label}`}
         {...attributes}
         {...listeners}
       >
@@ -57,12 +59,12 @@ function SortableSectionRow({ id }: { id: string }) {
         onClick={() => selectSection(id)}
         className="min-w-0 flex-1 truncate text-left font-medium"
       >
-        {section.name}
+        {label}
       </button>
       <button
         type="button"
         onClick={() => removeSection(id)}
-        aria-label={`Delete ${section.name}`}
+        aria-label={`Delete ${label}`}
         className="rounded p-1 text-stone-400 opacity-0 transition-opacity hover:bg-stone-100 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-stone-800"
       >
         <Trash2 size={14} />
@@ -247,11 +249,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   key={s.id}
                   className="group flex items-center gap-1 rounded-lg border border-dashed border-stone-300 px-2 py-1.5 text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400"
                 >
-                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                  <span className="min-w-0 flex-1 truncate">{sectionLabel(s)}</span>
                   <button
                     type="button"
                     onClick={() => restoreSection(s.id)}
-                    aria-label={`Restore ${s.name}`}
+                    aria-label={`Restore ${sectionLabel(s)}`}
                     className="rounded p-1 text-stone-400 hover:text-accent-600"
                     title="Restore"
                   >
@@ -260,7 +262,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <button
                     type="button"
                     onClick={() => deleteForever(s.id)}
-                    aria-label={`Delete ${s.name} forever`}
+                    aria-label={`Delete ${sectionLabel(s)} forever`}
                     className="rounded p-1 text-stone-400 hover:text-red-600"
                     title="Delete forever"
                   >

@@ -10,6 +10,8 @@ export interface Section {
   name: string;
   markdown: string;
   isCustom: boolean;
+  /** A blank section that takes its name from its first heading as you type. */
+  autoName?: boolean;
 }
 
 export type PreviewTheme = "light" | "dark";
@@ -26,15 +28,33 @@ export function assembleMarkdown(sections: Array<{ markdown: string }>): string 
     .concat("\n");
 }
 
-/** First level-1 heading text, used as the document title. */
-export function extractTitle(markdown: string): string | null {
-  const match = markdown.match(/^#\s+(.+)$/m);
-  if (!match?.[1]) return null;
-  const title = match[1]
+/** Heading text without inline Markdown, or null if nothing is left. */
+function plainHeading(raw: string): string | null {
+  const text = raw
     .replace(/[*_`~]/g, "")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .trim();
-  return title.length > 0 ? title : null;
+  return text.length > 0 ? text : null;
+}
+
+/** First level-1 heading text, used as the document title. */
+export function extractTitle(markdown: string): string | null {
+  const match = markdown.match(/^#\s+(.+)$/m);
+  return match?.[1] ? plainHeading(match[1]) : null;
+}
+
+/** Text of the first heading of any level, without closing #s. */
+export function firstHeading(markdown: string): string | null {
+  const match = markdown.match(/^#{1,6}[ \t]+(.+)$/m);
+  return match?.[1] ? plainHeading(match[1].replace(/[ \t]+#+[ \t]*$/, "")) : null;
+}
+
+export const UNTITLED_SECTION_NAME = "Untitled";
+
+/** What the sidebar and editor call a section; auto-named ones follow their first heading. */
+export function sectionLabel(section: Pick<Section, "name" | "markdown" | "autoName">): string {
+  if (!section.autoName) return section.name;
+  return firstHeading(section.markdown) ?? UNTITLED_SECTION_NAME;
 }
 
 /** Safe export filename stem: "My Project!" -> "my-project". */
