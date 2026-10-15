@@ -1,5 +1,13 @@
 # Shared documents are private: keep them out of search engines, and don't
 # leak their address to sites they link to.
+#
+# The CSP blocks inline and injected scripts, javascript: URLs and plugins on
+# share pages, where the document comes from whoever made the link. The
+# sha256 source is the theme script inline in index.html: editing that script
+# changes its hash, so update it here too (tests/share/headers.test.ts checks).
+# 'wasm-unsafe-eval' lets Shiki compile its WebAssembly highlighter; it doesn't
+# allow eval() of JavaScript.
 /s/*
   X-Robots-Tag: noindex, nofollow
   Referrer-Policy: no-referrer
+  Content-Security-Policy: script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com 'sha256-XLWye/yrVo9ar/JAHLq5YEHcxo5ypNkAfDVfVSzdoPA='; object-src 'none'; base-uri 'none'
