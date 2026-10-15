@@ -23,6 +23,8 @@ export const SHARE_IV_BYTES = 12;
 export const SHARE_AUTH_BYTES = 32;
 /** The 1 MiB markdown cap plus room for the JSON wrapper and the GCM tag. */
 export const SHARE_MAX_CIPHERTEXT_BYTES = MARKDOWN_BYTE_LIMIT + 64 * 1024;
+/** AES-GCM adds a 16-byte tag, so this is the largest JSON payload that fits the cap. */
+export const SHARE_MAX_PAYLOAD_BYTES = SHARE_MAX_CIPHERTEXT_BYTES - 16;
 
 export const SHARE_ID_LENGTH = 10;
 const SHARE_PATH = /^\/s\/([0-9A-Za-z]{10})\/?$/;

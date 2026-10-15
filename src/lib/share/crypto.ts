@@ -11,9 +11,10 @@ import {
 
 /**
  * End-to-end encryption for share links. The password never leaves the
- * browser: PBKDF2 stretches it into an AES-GCM key, which decrypts the
- * document, and a separate access proof, which lets the server hand out the
- * ciphertext (it stores only a hash of the proof).
+ * browser: PBKDF2 stretches it once, and HKDF splits the result into an
+ * AES-GCM key, which decrypts the document, and a separate access proof,
+ * which lets the server hand out the ciphertext (it stores only a hash of the
+ * proof).
  */
 
 export interface ShareKeys {
@@ -30,7 +31,16 @@ export interface SealedShare {
   auth: string;
 }
 
-const KEY_BYTES = 32;
+/** HKDF `info` labels; changing either breaks every existing link. */
+const ENC_INFO = "readmestudio/share/v1/enc";
+const AUTH_INFO = "readmestudio/share/v1/auth";
+
+const hkdfParams = (info: string): HkdfParams => ({
+  name: "HKDF",
+  hash: "SHA-256",
+  salt: new Uint8Array(0),
+  info: new TextEncoder().encode(info),
+});
 
 export async function deriveShareKeys(
   password: string,
@@ -44,18 +54,28 @@ export async function deriveShareKeys(
     false,
     ["deriveBits"],
   );
-  const bits = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      { name: "PBKDF2", hash: "SHA-256", salt, iterations },
-      material,
-      8 * (KEY_BYTES + SHARE_AUTH_BYTES),
-    ),
+  // One SHA-256-sized PBKDF2 block: asking for more would run all the
+  // iterations again per extra block, at no gain to an attacker's cost.
+  const stretched = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    material,
+    256,
   );
-  const key = await crypto.subtle.importKey("raw", bits.slice(0, KEY_BYTES), "AES-GCM", false, [
-    "encrypt",
-    "decrypt",
+  const prk = await crypto.subtle.importKey("raw", stretched, "HKDF", false, [
+    "deriveKey",
+    "deriveBits",
   ]);
-  return { key, auth: toBase64(bits.slice(KEY_BYTES)) };
+  const key = await crypto.subtle.deriveKey(
+    hkdfParams(ENC_INFO),
+    prk,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+  const auth = new Uint8Array(
+    await crypto.subtle.deriveBits(hkdfParams(AUTH_INFO), prk, 8 * SHARE_AUTH_BYTES),
+  );
+  return { key, auth: toBase64(auth) };
 }
 
 export async function sealShare(

@@ -92,7 +92,7 @@ export function ShareDialog({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (phase.step === "working") return;
-    const error = checkShareInput(markdown, password, confirm);
+    const error = checkShareInput({ markdown, title, base }, password, confirm);
     if (error) {
       setPhase({ step: "form", error });
       return;

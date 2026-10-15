@@ -3,14 +3,18 @@ import {
   type CreateShareResponse,
   fromBase64,
   type OpenShareResponse,
+  SHARE_MAX_ITERATIONS,
+  SHARE_MAX_PAYLOAD_BYTES,
+  SHARE_MIN_ITERATIONS,
   SHARE_MIN_PASSWORD_LENGTH,
+  SHARE_SALT_BYTES,
   type ShareMeta,
   type SharePayload,
   type ShareTtlDays,
   shareUrlFor,
 } from "@/shared/share-protocol";
 import { MARKDOWN_BYTE_LIMIT } from "@/shared/types";
-import { deriveShareKeys, openSealedShare, sealShare } from "./crypto";
+import { deriveShareKeys, openSealedShare, type ShareKeys, sealShare } from "./crypto";
 
 /** A failed share action, with a message that can be shown as-is. Status 0 = no response. */
 export class ShareError extends Error {
@@ -22,13 +26,26 @@ export class ShareError extends Error {
   }
 }
 
-export interface ShareInput {
+/** What gets shared: the document as the editor holds it. */
+export interface ShareDocument {
   markdown: string;
   title: string | null;
   base: DocumentBase | null;
+}
+
+export interface ShareInput extends ShareDocument {
   password: string;
   ttlDays: ShareTtlDays;
 }
+
+const payloadOf = ({ markdown, title, base }: ShareDocument): SharePayload => ({
+  v: 1,
+  markdown,
+  title,
+  base,
+});
+
+const utf8Length = (text: string) => new TextEncoder().encode(text).length;
 
 export interface CreatedShare {
   url: string;
@@ -37,11 +54,16 @@ export interface CreatedShare {
 
 /** The dialog's checks, before anything is encrypted. Returns an error message or null. */
 export function checkShareInput(
-  markdown: string,
+  doc: ShareDocument,
   password: string,
   confirm: string,
 ): string | null {
-  if (new TextEncoder().encode(markdown).length > MARKDOWN_BYTE_LIMIT) {
+  // The markdown limit is the one users see; the payload check covers what
+  // JSON escaping, the title and the base add, so the server never answers 413.
+  if (
+    utf8Length(doc.markdown) > MARKDOWN_BYTE_LIMIT ||
+    utf8Length(JSON.stringify(payloadOf(doc))) > SHARE_MAX_PAYLOAD_BYTES
+  ) {
     return "This document is too large to share (the limit is 1 MB).";
   }
   if (password.length < SHARE_MIN_PASSWORD_LENGTH) {
@@ -76,11 +98,7 @@ export async function createShareLink(
   input: ShareInput,
   options: { origin?: string; iterations?: number } = {},
 ): Promise<CreatedShare> {
-  const sealed = await sealShare(
-    { v: 1, markdown: input.markdown, title: input.title, base: input.base },
-    input.password,
-    options.iterations,
-  );
+  const sealed = await sealShare(payloadOf(input), input.password, options.iterations);
   const created = await call<CreateShareResponse>(
     "/api/shares",
     postJson({ ...sealed, ttlDays: input.ttlDays }),
@@ -95,17 +113,42 @@ export function fetchShareMeta(id: string): Promise<ShareMeta> {
   return call<ShareMeta>(`/api/shares/${id}`);
 }
 
-/** Derives the keys from the password, proves them to the server, decrypts locally. */
+const damaged = () => new ShareError("This link's data is damaged and can't be opened.", 0);
+
+/**
+ * Derives the keys from the password, proves them to the server, decrypts
+ * locally. The KDF parameters come from the server, so they're checked against
+ * the protocol's limits first: a hostile server could otherwise make this
+ * browser spin on a huge iteration count, or weaken the key with a tiny one.
+ */
 export async function unlockShare(
   id: string,
   meta: ShareMeta,
   password: string,
 ): Promise<SharePayload> {
-  const { key, auth } = await deriveShareKeys(password, fromBase64(meta.salt), meta.iterations);
-  const sealed = await call<OpenShareResponse>(`/api/shares/${id}/open`, postJson({ auth }));
+  const { iterations } = meta;
+  if (
+    !Number.isInteger(iterations) ||
+    iterations < SHARE_MIN_ITERATIONS ||
+    iterations > SHARE_MAX_ITERATIONS
+  ) {
+    throw damaged();
+  }
+  let keys: ShareKeys;
   try {
-    return await openSealedShare(sealed, key);
+    const salt = fromBase64(meta.salt);
+    if (salt.length !== SHARE_SALT_BYTES) throw damaged();
+    keys = await deriveShareKeys(password, salt, iterations);
   } catch {
-    throw new ShareError("This link's data is damaged and can't be opened.", 0);
+    throw damaged();
+  }
+  const sealed = await call<OpenShareResponse>(
+    `/api/shares/${id}/open`,
+    postJson({ auth: keys.auth }),
+  );
+  try {
+    return await openSealedShare(sealed, keys.key);
+  } catch {
+    throw damaged();
   }
 }
