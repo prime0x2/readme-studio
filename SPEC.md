@@ -294,9 +294,60 @@ Document defaults: A4, ~2 cm margins, sans body font (e.g. Calibri/Inter), mono 
 
 ## 10. Share by Link (built)
 
-Built as **password-protected, end-to-end encrypted snapshots** on Cloudflare Workers + D1 rather than the VPS/SQLite design that was planned here. Snapshots are immutable, expire after 1 / 7 / 30 days (default 7, hard cap), and are purged daily. Anyone can create them; creation and unlock attempts are rate-limited per IP. The viewer shows only the document.
+Built as **password-protected, end-to-end encrypted snapshots** on Cloudflare Workers + D1 rather than the VPS/SQLite design that was planned here. Code: `src/shared/share-protocol.ts`, `src/lib/share/`, `src/components/ShareDialog.tsx`, `src/share/SharePage.tsx`, `worker/`, `migrations/`.
 
-Code: `src/shared/share-protocol.ts`, `src/lib/share/`, `src/components/ShareDialog.tsx`, `src/share/SharePage.tsx`, `worker/`, `migrations/`.
+### 10.1 What the user gets
+
+1. In the editor, **Share** opens a dialog: password (typed twice, at least 8 characters), expiry (1 / 7 / 30 days, default 7), **Create link**.
+2. The dialog shows a short link, `https://readme.prime0x2.dev/s/<id>`, with a copy button and a reminder to send the password separately.
+3. The recipient opens the link, types the password and sees the document **full screen and nothing else**: no toolbar, no editor, theme from their system setting.
+4. Wrong password: "Wrong password." Too many attempts: "Too many attempts. Wait a minute and try again." Unknown link: "This link doesn't exist." Expired: "This link has expired."
+
+### 10.2 Decisions
+
+| Topic | Decision | Rejected |
+| --- | --- | --- |
+| Who can create | Anyone, no accounts | Owner-only key |
+| Content model | Immutable snapshot; re-share = new link | Updatable links with edit keys |
+| Expiry | 1 / 7 / 30 days, default 7, hard cap; purged daily | "Never" (permanent anonymous hosting attracts abuse) |
+| Hosting | Cloudflare Workers (Worker code only for `/api/*`) | VPS |
+| Storage | **D1** (managed SQLite) | Workers KV (eventual consistency: a fresh link can 404 in other regions for ~60 s), R2 (unneeded for small docs), file SQLite (no filesystem on Workers) |
+| Confidentiality | **End-to-end encrypted** in the browser; the server never sees the password, title or content | Server-side plaintext storage + password hash |
+| Abuse protection | Per-client rate limits (create, open; IPv6 counted per /64), a per-link open limit, 1 MiB size cap, a global live-storage cap, expiry purge, `noindex` | Turnstile (deferred: needs dashboard setup; add if abuse appears) |
+| Viewer chrome | Document only | Toolbar with theme/downloads |
+
+### 10.3 Cryptography
+
+All in the browser with Web Crypto:
+
+- `prk = PBKDF2-SHA256(password.normalize("NFC"), salt[16 random bytes], iterations=600 000, 256 bits)`. One SHA-256-sized block: asking PBKDF2 for 512 bits would run all 600 000 iterations twice and cost an attacker nothing extra.
+- `encKey = HKDF-SHA256(prk, salt="", info="readmestudio/share/v1/enc")` → AES-256-GCM key (non-extractable); `auth = HKDF-SHA256(prk, salt="", info="readmestudio/share/v1/auth", 32 bytes)` → access proof.
+- The payload `{ v: 1, markdown, title, base }` (`base` is the editor's `documentBase`, so relative images from an imported GitHub README still resolve) is JSON-encoded and AES-GCM-encrypted with a random 12-byte IV. Before encrypting, the dialog checks the markdown (≤ 1 MiB, the limit users see) and the UTF-8 size of the JSON payload (≤ the ciphertext cap minus the 16-byte GCM tag), so JSON escaping, the title or the base can't produce a 413.
+- Anyone can seal a payload, so the viewer treats it as hostile: `base` is kept only if every field present (`raw` required; `rawRoot`, `web`, `webRoot` optional) is an absolute `http:`/`https:` URL, copied into a fresh object, else dropped. URL resolution runs after sanitizing and never emits a URL whose scheme isn't `http:`/`https:` (it leaves the URL relative instead).
+- Upload: `{ ciphertext, iv, salt, iterations, auth, ttlDays }` (base64). The server stores `SHA-256(auth)`, never `auth` and never the password.
+- Open: `GET` meta → `{ salt, iterations, expiresAt }`. The browser refuses ("This link's data is damaged and can't be opened.") unless `iterations` is an integer in 100 000 – 5 000 000 and the salt decodes to 16 bytes. It derives the keys and sends `POST /open { auth }`; the server compares `SHA-256(auth)` in constant time and only then returns `{ ciphertext, iv }`; the browser decrypts.
+
+Why the separate `auth` value: without it, anyone holding the link could download the ciphertext and guess passwords offline forever. With it, guesses go through the rate-limited endpoint. The server still can't decrypt: it holds a hash of `auth`, and `encKey` never leaves the browser. Iterations are stored per share so they can be raised later without breaking old links.
+
+### 10.4 Server
+
+- `worker/index.ts`: requests to `/api/*` go to the Worker (`run_worker_first`); everything else is served by the assets binding. A daily cron deletes expired rows.
+- Endpoints:
+  - `POST /api/shares` → 201 `{ id, expiresAt }` · 400 invalid · 413 too large · 429 rate-limited · 503 storage cap reached
+  - `GET /api/shares/:id` → 200 `{ salt, iterations, expiresAt }` · 404 · 410
+  - `POST /api/shares/:id/open` → 200 `{ ciphertext, iv }` · 403 wrong password · 404 · 410 · 429
+- IDs: 10 random base62 characters (~59 bits), generated by the server, retried on collision.
+- Table `shares(id, ciphertext, iv, salt, iterations, auth_hash, created_at, expires_at)`, index on `expires_at`.
+- Limits (Workers rate-limiting bindings): create 5/min and open 10/min per client, where a client is the IPv4 address or the IPv6 /64 (one IPv6 host usually owns a whole /64); open also 10/min per link (`SHARE_OPEN_LIMITER`, key `share:<id>`), so pooled guesses from many addresses stay rate-limited. The per-link limit lets someone who has the link slow down its real recipient for a minute at a time; that's accepted. Ciphertext ≤ 1 MiB + 64 KiB; iterations 100 000 – 5 000 000; ttlDays ∈ {1, 7, 30}.
+- Storage cap: before inserting, the Worker sums `LENGTH(ciphertext)` over unexpired rows and answers 503 "Sharing is temporarily unavailable. Try again later." once it reaches `SHARE_STORAGE_CAP_BYTES` (400 MiB of base64, under D1's 500 MB free tier), so one client can't fill the database. The README has the cleanup runbook.
+- Headers: API responses `cache-control: no-store`; `/s/*` pages `X-Robots-Tag: noindex, nofollow`, `Referrer-Policy: no-referrer` and a `Content-Security-Policy` (via `public/_headers`) that allows only same-origin scripts, the Web Analytics script host, the hash of the theme script inlined in `index.html` (editing it means updating the hash; `tests/share/headers.test.ts` fails until you do) and `'wasm-unsafe-eval'`, which lets Shiki compile its WebAssembly highlighter without allowing JavaScript `eval`.
+- Analytics: the Cloudflare Web Analytics beacon isn't loaded on `/s/*`, so share addresses never reach analytics.
+
+### 10.5 Out of scope
+
+Turnstile, deleting a link before it expires, view counters, updatable links, sharing from `/view`.
+
+---
 
 ## 11. Testing (v1: targeted; e2e deferred)
 
