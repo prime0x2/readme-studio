@@ -1,0 +1,5 @@
+# Shared documents are private: keep them out of search engines, and don't
+# leak their address to sites they link to.
+/s/*
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer
