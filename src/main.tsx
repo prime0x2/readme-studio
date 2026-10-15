@@ -10,9 +10,10 @@ import { ViewPage } from "./view/ViewPage";
 // Cloudflare Web Analytics — a privacy-first JS beacon (no cookies). Because it
 // only fires from real browsers that execute JS, it counts human page views and
 // ignores crawlers/bots. Loads only when a beacon token is configured at build
-// time (VITE_CF_BEACON_TOKEN), so dev and untokened builds stay clean.
+// time (VITE_CF_BEACON_TOKEN), so dev and untokened builds stay clean. Never on
+// share pages (/s/<id>): their addresses are secrets and stay out of analytics.
 const cfBeaconToken = import.meta.env.VITE_CF_BEACON_TOKEN;
-if (cfBeaconToken) {
+if (cfBeaconToken && !isShareRoute(window.location.pathname)) {
   const beacon = document.createElement("script");
   beacon.defer = true;
   beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
