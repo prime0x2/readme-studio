@@ -62,4 +62,58 @@ describe("share crypto", () => {
       openSealedShare({ ...sealed, ciphertext: toBase64(bytes) }, key),
     ).rejects.toThrow();
   });
+
+  it("stretches the password once, then splits it with HKDF into distinct keys", async () => {
+    const salt = new Uint8Array(16).fill(7);
+    const { key, auth } = await deriveShareKeys("correct horse", salt, FAST);
+    const authBytes = fromBase64(auth);
+    expect(authBytes.length).toBe(32);
+
+    // Recompute the documented construction independently.
+    const material = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode("correct horse"),
+      "PBKDF2",
+      false,
+      ["deriveBits"],
+    );
+    const stretched = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", hash: "SHA-256", salt, iterations: FAST },
+      material,
+      256,
+    );
+    const hkdf = await crypto.subtle.importKey("raw", stretched, "HKDF", false, ["deriveBits"]);
+    const expand = async (info: string) =>
+      new Uint8Array(
+        await crypto.subtle.deriveBits(
+          {
+            name: "HKDF",
+            hash: "SHA-256",
+            salt: new Uint8Array(0),
+            info: new TextEncoder().encode(info),
+          },
+          hkdf,
+          256,
+        ),
+      );
+    const encBytes = await expand("readmestudio/share/v1/enc");
+    expect(authBytes).toEqual(await expand("readmestudio/share/v1/auth"));
+    expect(authBytes).not.toEqual(encBytes);
+
+    // The AES key is the "enc" output: it opens what that key sealed.
+    const iv = new Uint8Array(12);
+    const expected = await crypto.subtle.importKey("raw", encBytes, "AES-GCM", false, ["encrypt"]);
+    const sealed = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      expected,
+      new TextEncoder().encode(JSON.stringify(payload)),
+    );
+    expect(
+      await openSealedShare(
+        { ciphertext: toBase64(new Uint8Array(sealed)), iv: toBase64(iv) },
+        key,
+      ),
+    ).toEqual(payload);
+    expect(key.extractable).toBe(false);
+  });
 });
