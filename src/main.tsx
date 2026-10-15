@@ -3,6 +3,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { isViewRoute } from "./lib/remoteReadme";
+import { SharePage } from "./share/SharePage";
+import { isShareRoute, shareIdFromPath } from "./shared/share-protocol";
 import { ViewPage } from "./view/ViewPage";
 
 // Cloudflare Web Analytics — a privacy-first JS beacon (no cookies). Because it
@@ -21,8 +23,18 @@ if (cfBeaconToken) {
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root element");
 
-// Two pages, no router: the editor, and read-only share links
-// (/view?url=…, /link?url=…, /gh/<owner>/<repo>).
+// Three pages, no router: the editor, read-only GitHub links
+// (/view?url=…, /link?url=…, /gh/<owner>/<repo>) and password-protected
+// shares (/s/<id>).
+const { pathname } = window.location;
 createRoot(root).render(
-  <StrictMode>{isViewRoute(window.location.pathname) ? <ViewPage /> : <App />}</StrictMode>,
+  <StrictMode>
+    {isShareRoute(pathname) ? (
+      <SharePage id={shareIdFromPath(pathname)} />
+    ) : isViewRoute(pathname) ? (
+      <ViewPage />
+    ) : (
+      <App />
+    )}
+  </StrictMode>,
 );
