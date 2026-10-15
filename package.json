@@ -10,6 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:api": "node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && wrangler d1 migrations apply readme-studio --local && wrangler dev --port 8787",
+    "db:migrate": "wrangler d1 migrations apply readme-studio --remote",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run",

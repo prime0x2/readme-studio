@@ -10,5 +10,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // The share-link API runs in `pnpm dev:api` (wrangler dev on :8787).
+    proxy: { "/api": "http://localhost:8787" },
   },
 });

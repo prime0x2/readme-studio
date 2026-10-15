@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { type SealedShare, sealShare } from "../../src/lib/share/crypto";
 import { SHARE_MAX_CIPHERTEXT_BYTES, toBase64 } from "../../src/shared/share-protocol";
 import type { Env } from "../../worker/env";
+import worker from "../../worker/index";
 import { handleApi, newShareId, purgeExpired } from "../../worker/shares";
 import { createLimiter, createTestEnv } from "./fake-env";
 
@@ -180,5 +181,24 @@ describe("share API", () => {
     const ids = new Set(Array.from({ length: 1000 }, newShareId));
     expect(ids.size).toBe(1000);
     for (const id of ids) expect(id).toMatch(/^[0-9A-Za-z]{10}$/);
+  });
+});
+
+describe("worker entry", () => {
+  it("sends /api to the share API and everything else to the static assets", async () => {
+    const { env } = createTestEnv();
+    const page = await worker.fetch(get("/s/Ab3dE5gH9k"), env);
+    expect(page.headers.get("x-from")).toBe("assets");
+    const api = await worker.fetch(get("/api/shares/AAAAAAAAAA"), env);
+    expect(api.status).toBe(404);
+  });
+
+  it("purges expired shares on the daily cron", async () => {
+    const { env, db } = createTestEnv();
+    await create(env, { ttlDays: 1 }, { now: Date.now() - 2 * DAY });
+    const pending: Promise<unknown>[] = [];
+    await worker.scheduled({}, env, { waitUntil: (promise) => pending.push(promise) });
+    await Promise.all(pending);
+    expect(db.sqlite.prepare("SELECT COUNT(*) AS n FROM shares").get()).toEqual({ n: 0 });
   });
 });
