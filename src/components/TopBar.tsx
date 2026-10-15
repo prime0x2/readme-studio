@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RotateCcw,
+  Share2,
   Sun,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import {
   requestExport,
 } from "../lib/exports";
 import { type UiTheme, useDocStore } from "../store/useDocStore";
+import { ShareDialog } from "./ShareDialog";
 
 const THEME_CYCLE: Record<UiTheme, UiTheme> = { light: "dark", dark: "system", system: "light" };
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
@@ -40,6 +42,7 @@ export function TopBar({
 
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const markdown = useMemo(() => assembleMarkdown(sections), [sections]);
   const title = useMemo(() => extractTitle(markdown), [markdown]);
@@ -158,6 +161,30 @@ export function TopBar({
         <RotateCcw size={13} />
         {confirmReset ? "Really reset?" : <span className="hidden md:inline">Reset</span>}
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (sections.length === 0) {
+            toast.warning("Nothing to share yet — add a section first.");
+            return;
+          }
+          setShareOpen(true);
+        }}
+        title="Share a password-protected link"
+        aria-label="Share"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+      >
+        <Share2 size={13} />
+        <span className="hidden md:inline">Share</span>
+      </button>
+      {shareOpen && (
+        <ShareDialog
+          markdown={markdown}
+          title={title}
+          base={documentBase}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
 
       <div className="mx-1 hidden h-5 w-px bg-stone-200 sm:block dark:bg-stone-700" />
 
