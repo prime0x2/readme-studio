@@ -30,6 +30,14 @@ export function SharePage({ id }: { id: string | null }) {
   }, [theme]);
 
   useEffect(() => {
+    const existing = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (existing) {
+      const previous = existing.content;
+      existing.content = "noindex, nofollow";
+      return () => {
+        existing.content = previous;
+      };
+    }
     const robots = document.createElement("meta");
     robots.name = "robots";
     robots.content = "noindex, nofollow";
