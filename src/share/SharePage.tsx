@@ -1,9 +1,12 @@
 import { AlertCircle, BookOpenText, Loader2, Lock } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { Toaster } from "sonner";
 import type { ShareMeta, SharePayload } from "@/shared/share-protocol";
-import { MarkdownArticle } from "../components/MarkdownArticle";
+import { FullscreenView } from "../components/FullscreenView";
+import { DownloadButtons, ThemeToggle } from "../components/Toolbar";
 import { fetchShareMeta, ShareError, unlockShare } from "../lib/share/api";
 import { useResolvedTheme } from "../lib/useRenderedMarkdown";
+import type { UiTheme } from "../store/useDocStore";
 
 type State =
   | { status: "loading" }
@@ -14,16 +17,50 @@ type State =
 const messageOf = (err: unknown) =>
   err instanceof ShareError ? err.message : "Something went wrong opening this link.";
 
+/** The viewer's theme choice, kept apart from the editor's saved document. */
+const THEME_KEY = "readmestudio:share-theme";
+
+function useViewerTheme(): [UiTheme, (theme: UiTheme) => void] {
+  const [theme, setTheme] = useState<UiTheme>(() => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      return saved === "light" || saved === "dark" ? saved : "system";
+    } catch {
+      return "system";
+    }
+  });
+  const choose = (next: UiTheme) => {
+    setTheme(next);
+    try {
+      if (next === "system") localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // Storage blocked: the choice lasts until the page closes.
+    }
+  };
+  return [theme, choose];
+}
+
 /**
  * /s/<id>: a password-protected shared document. The password unlocks it in
- * this browser; once open, the page shows the document and nothing else.
+ * this browser; once open, the page shows the document with a small toolbar
+ * (theme, PDF, DOCX, .md).
  */
 export function SharePage({ id }: { id: string | null }) {
-  const theme = useResolvedTheme("system");
+  const [uiTheme, setUiTheme] = useViewerTheme();
+  const theme = useResolvedTheme(uiTheme);
   const [state, setState] = useState<State>(() =>
     id ? { status: "loading" } : { status: "unavailable", message: "This link doesn't exist." },
   );
   const [password, setPassword] = useState("");
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
+  const lockError = state.status === "locked" ? state.error : null;
+
+  // After a wrong password, select what was typed so it can be retyped at once.
+  useEffect(() => {
+    if (lockError) passwordRef.current?.select();
+  }, [lockError]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -80,15 +117,22 @@ export function SharePage({ id }: { id: string | null }) {
   }
 
   if (state.status === "open") {
+    const { markdown, title, base } = state.payload;
     return (
-      <div className={`min-h-full ${theme === "dark" ? "bg-[#0d1117]" : "bg-white"}`}>
-        <MarkdownArticle
-          blocks={[{ key: "doc", markdown: state.payload.markdown }]}
+      <>
+        <FullscreenView
+          blocks={[{ key: "doc", markdown }]}
           theme={theme}
-          base={state.payload.base ?? undefined}
-          className="mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-14"
+          base={base ?? undefined}
+          actions={
+            <>
+              <ThemeToggle theme={uiTheme} onChange={setUiTheme} />
+              <DownloadButtons markdown={markdown} title={title} base={base ?? undefined} />
+            </>
+          }
         />
-      </div>
+        <Toaster richColors position="bottom-right" theme={theme} />
+      </>
     );
   }
 
@@ -100,14 +144,20 @@ export function SharePage({ id }: { id: string | null }) {
         </span>
 
         {state.status === "loading" && (
-          <p className="mt-5 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
+          <p
+            role="status"
+            className="mt-5 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400"
+          >
             <Loader2 size={15} className="animate-spin" /> Opening link…
           </p>
         )}
 
         {state.status === "unavailable" && (
           <>
-            <p className="mt-5 flex items-center gap-2 font-medium text-red-700 dark:text-red-400">
+            <p
+              role="alert"
+              className="mt-5 flex items-center gap-2 font-medium text-red-700 dark:text-red-400"
+            >
               <AlertCircle size={16} /> {state.message}
             </p>
             <a
@@ -129,8 +179,11 @@ export function SharePage({ id }: { id: string | null }) {
               Enter the password you were given.
             </p>
             <input
+              ref={passwordRef}
               type="password"
               aria-label="Password"
+              aria-invalid={state.error ? true : undefined}
+              aria-describedby={state.error ? errorId : undefined}
               autoComplete="off"
               // biome-ignore lint/a11y/noAutofocus: the page exists to take this input
               autoFocus
@@ -139,7 +192,7 @@ export function SharePage({ id }: { id: string | null }) {
               className="mt-4 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-accent-400 focus:ring-2 focus:ring-accent-200 focus:outline-none dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:ring-accent-900"
             />
             {state.error && (
-              <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+              <p id={errorId} role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
                 {state.error}
               </p>
             )}

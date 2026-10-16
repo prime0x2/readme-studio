@@ -1,16 +1,17 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import type { D1Like, D1Statement, Env, RateLimiter } from "../../worker/env";
 
-const MIGRATION = readFileSync(
-  new URL("../../migrations/0001_create_shares.sql", import.meta.url),
-  "utf8",
-);
+const MIGRATIONS_DIR = new URL("../../migrations/", import.meta.url);
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR)
+  .filter((name) => name.endsWith(".sql"))
+  .sort()
+  .map((name) => readFileSync(new URL(name, MIGRATIONS_DIR), "utf8"));
 
-/** A D1 stand-in on Node's built-in SQLite, with the real migration applied. */
+/** A D1 stand-in on Node's built-in SQLite, with the real migrations applied in order. */
 export function createTestDb(): D1Like & { sqlite: DatabaseSync } {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(MIGRATION);
+  for (const migration of MIGRATIONS) sqlite.exec(migration);
   const statement = (query: string, values: SQLInputValue[]): D1Statement => ({
     bind: (...next: unknown[]) => statement(query, next as SQLInputValue[]),
     first: async <T>() => (sqlite.prepare(query).get(...values) as T | undefined) ?? null,
@@ -39,6 +40,7 @@ export function createTestEnv(overrides: Partial<Env> = {}) {
     CREATE_LIMITER: createLimiter(),
     OPEN_LIMITER: createLimiter(),
     SHARE_OPEN_LIMITER: createLimiter(),
+    LOOKUP_LIMITER: createLimiter(),
     ...overrides,
   };
   return { env, db };

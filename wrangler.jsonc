@@ -37,7 +37,8 @@
       "name": "SHARE_OPEN_LIMITER",
       "namespace_id": "1003",
       "simple": { "limit": 10, "period": 60 }
-    }
+    },
+    { "name": "LOOKUP_LIMITER", "namespace_id": "1004", "simple": { "limit": 30, "period": 60 } }
   ],
   // Daily purge of expired shares (UTC).
   "triggers": { "crons": ["17 3 * * *"] },

@@ -24,4 +24,6 @@ export interface Env {
   OPEN_LIMITER: RateLimiter;
   /** Keyed by share id, so guesses on one link are limited across all IPs. */
   SHARE_OPEN_LIMITER: RateLimiter;
+  /** Link lookups (GET meta) per client, so ids can't be probed in bulk. */
+  LOOKUP_LIMITER: RateLimiter;
 }
