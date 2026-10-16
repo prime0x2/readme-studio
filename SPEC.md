@@ -408,7 +408,7 @@ Biome (lint + format, replacing the template's ESLint) · husky pre-commit (`bio
 | M4 | DOCX export | mdast → docx mapping incl. Shiki runs + badge rasterization; fixture corpus |
 | M5 | Tests & polish | Vitest suites (§11), CI workflow, empty/edge states, tablet responsiveness |
 | M6 | Deploy | `scripts/deploy.sh`, VPS dev + prod live, healthcheck |
-| — | Post-v1 | Share-by-link (§10), Playwright e2e, import-.md-to-sections, multi-document |
+| — | Post-v1 | Share-by-link (§10, built), Playwright e2e, import-.md-to-sections (built: **Open file** in the top bar or drop a file on the page; the current sections move to Deleted sections), multi-document |
 
 ---
 

@@ -6,11 +6,13 @@ All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/read
 
 ### ✨ New
 
+- **Open a Markdown file from your computer.** Click **Open file** in the top bar, or drop a `.md` file anywhere on the editor. It's split into sections like a GitHub import, and your current sections move to Deleted sections. Files over 1 MB or that aren't Markdown are refused with a clear message.
 - **A new look for shared links' password screen.** The locked page now looks like the document it protects: a sheet with its lines blacked out and an orange seal. It shows when the link expires, has a show-password button, and reacts while unlocking and to a wrong password.
 - **Theme toggle and downloads on shared links.** Whoever opens a password-protected link can now switch between light, dark and system themes, and download the document as PDF, DOCX or Markdown, all built in their browser.
 
 ### 🛠 Improved
 
+- **The top bar fits on small phones.** Down to 360 px wide, every button stays on screen.
 - **Share-link hardening.** Link lookups are rate-limited per client; the storage-cap check reads a small size column instead of every stored document; the build now fails if the share pages' security policy doesn't match the page that's actually served; and the password form is friendlier to screen readers and keyboards (errors are announced and linked to the field, and a wrong password is selected for retyping).
 
 ## [2.1.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.1.0) — 2026-10-15
