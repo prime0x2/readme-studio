@@ -2,7 +2,9 @@
 
 All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/readme-studio/releases>
 
-## Unreleased
+## [2.2.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.2.0) — 2026-10-16
+
+**Bring your README in, send it out nicely.** Open a Markdown file straight from your computer, and shared links now greet readers with a sealed-document password screen, then let them pick a theme and download the document as PDF, DOCX or Markdown.
 
 ### ✨ New
 
