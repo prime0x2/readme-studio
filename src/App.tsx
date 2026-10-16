@@ -1,3 +1,4 @@
+import { FileUp } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Toaster, toast } from "sonner";
 import { EditorPane } from "./components/EditorPane";
@@ -6,6 +7,7 @@ import { PreviewPane } from "./components/PreviewPane";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { useMediaQuery } from "./lib/useMediaQuery";
+import { useFileDrop, useOpenMarkdownFile } from "./lib/useOpenMarkdownFile";
 import { useResolvedTheme } from "./lib/useRenderedMarkdown";
 import { useSectionBlocks } from "./lib/useSectionBlocks";
 import { STORAGE_FAILED_EVENT, useDocStore } from "./store/useDocStore";
@@ -67,6 +69,8 @@ export default function App() {
   const panesRef = useRef<HTMLDivElement>(null);
 
   useStorageWarning();
+  const openMarkdownFile = useOpenMarkdownFile();
+  const draggingFile = useFileDrop((file) => void openMarkdownFile(file));
 
   // Desktop collapses the column; below lg the same control opens the drawer.
   const toggleSidebar = useCallback(() => {
@@ -192,6 +196,18 @@ export default function App() {
       </div>
 
       {fullscreen && <EditorFullscreen theme={resolved} onExit={() => setFullscreen(false)} />}
+
+      {draggingFile && (
+        <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/30 p-6 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-accent-400 bg-white px-10 py-8 text-center shadow-xl dark:border-accent-600 dark:bg-stone-900">
+            <FileUp size={28} className="text-accent-600 dark:text-accent-400" aria-hidden="true" />
+            <p className="mt-3 font-display text-xl font-semibold tracking-tight">Drop to open</p>
+            <p className="mt-1 max-w-xs text-sm text-stone-600 dark:text-stone-400">
+              The file opens as your document. Your current sections move to Deleted sections.
+            </p>
+          </div>
+        </div>
+      )}
 
       <Toaster richColors position="bottom-right" theme={resolved} />
     </div>

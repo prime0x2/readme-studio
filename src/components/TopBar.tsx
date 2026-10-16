@@ -2,6 +2,7 @@ import {
   BookOpenText,
   Download,
   FileText,
+  FileUp,
   Link2,
   Loader2,
   Monitor,
@@ -12,7 +13,7 @@ import {
   Share2,
   Sun,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { assembleMarkdown, extractTitle } from "@/shared";
 import {
@@ -21,8 +22,10 @@ import {
   PDF_PRINT_HINT,
   requestExport,
 } from "../lib/exports";
+import { MARKDOWN_FILE_ACCEPT } from "../lib/markdownFile";
 import { nextTheme } from "../lib/theme";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { useOpenMarkdownFile } from "../lib/useOpenMarkdownFile";
 import { useDocStore } from "../store/useDocStore";
 import { ShareDialog } from "./ShareDialog";
 
@@ -45,6 +48,8 @@ export function TopBar({
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const openMarkdownFile = useOpenMarkdownFile();
 
   const markdown = useMemo(() => assembleMarkdown(sections), [sections]);
   const title = useMemo(() => extractTitle(markdown), [markdown]);
@@ -87,7 +92,7 @@ export function TopBar({
       type="button"
       onClick={() => void handleExport(format)}
       disabled={exporting !== null}
-      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-stone-200 bg-white px-2 py-1.5 sm:px-2.5 text-xs font-medium text-stone-700 transition-colors hover:border-accent-300 hover:text-accent-800 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-accent-700 dark:hover:text-accent-300"
+      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-stone-200 bg-white px-1.5 py-1.5 sm:px-2.5 text-xs font-medium text-stone-700 transition-colors hover:border-accent-300 hover:text-accent-800 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-accent-700 dark:hover:text-accent-300"
     >
       {exporting === format ? (
         <Loader2 size={13} className="animate-spin" />
@@ -99,7 +104,7 @@ export function TopBar({
   );
 
   return (
-    <header className="flex items-center gap-2 border-b border-stone-200 bg-white px-3 py-2.5 sm:gap-3 sm:px-4 dark:border-stone-800 dark:bg-stone-900">
+    <header className="flex items-center gap-1 border-b border-stone-200 bg-white px-2 py-2.5 sm:gap-3 sm:px-4 dark:border-stone-800 dark:bg-stone-900">
       <button
         type="button"
         onClick={onToggleSidebar}
@@ -112,7 +117,7 @@ export function TopBar({
       </button>
 
       <div className="flex shrink-0 items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-sm">
+        <span className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-sm sm:size-8">
           <BookOpenText size={17} />
         </span>
         <span className="hidden font-display text-lg font-semibold sm:inline tracking-tight text-stone-900 dark:text-stone-100">
@@ -127,6 +132,29 @@ export function TopBar({
       )}
 
       <div className="flex-1" />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={MARKDOWN_FILE_ACCEPT}
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = ""; // picking the same file again still opens it
+          if (file) void openMarkdownFile(file);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        title="Open a Markdown file from your computer (or drop one on the page). Your current sections move to Deleted sections."
+        aria-label="Open file"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+      >
+        <FileUp size={13} />
+        <span className="hidden lg:inline">Open file</span>
+        <span className="hidden md:inline lg:hidden">File</span>
+      </button>
 
       <a
         href="/view"
@@ -154,7 +182,7 @@ export function TopBar({
         onClick={handleReset}
         title="Start over with a fresh document"
         aria-label={confirmReset ? "Really reset?" : "Reset"}
-        className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+        className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-2.5 ${
           confirmReset
             ? "bg-red-600 text-white hover:bg-red-700"
             : "text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
@@ -174,7 +202,7 @@ export function TopBar({
         }}
         title="Share a password-protected link"
         aria-label="Share"
-        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
       >
         <Share2 size={13} />
         <span className="hidden md:inline">Share</span>
@@ -204,7 +232,7 @@ export function TopBar({
           toast.success("README.md downloaded.");
         }}
         aria-label="Download README.md"
-        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent-600 px-2.5 py-1.5 sm:px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-700"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent-600 px-2 py-1.5 sm:px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-700"
       >
         <Download size={13} />
         <span className="hidden md:inline">README.md</span>
