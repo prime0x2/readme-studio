@@ -21,10 +21,11 @@ import {
   PDF_PRINT_HINT,
   requestExport,
 } from "../lib/exports";
-import { type UiTheme, useDocStore } from "../store/useDocStore";
+import { nextTheme } from "../lib/theme";
+import { useMediaQuery } from "../lib/useMediaQuery";
+import { useDocStore } from "../store/useDocStore";
 import { ShareDialog } from "./ShareDialog";
 
-const THEME_CYCLE: Record<UiTheme, UiTheme> = { light: "dark", dark: "system", system: "light" };
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
 
 export function TopBar({
@@ -37,6 +38,7 @@ export function TopBar({
   const sections = useDocStore((s) => s.sections);
   const uiTheme = useDocStore((s) => s.uiTheme);
   const setUiTheme = useDocStore((s) => s.setUiTheme);
+  const systemDark = useMediaQuery("(prefers-color-scheme: dark)");
   const resetDocument = useDocStore((s) => s.resetDocument);
   const documentBase = useDocStore((s) => s.documentBase);
 
@@ -139,7 +141,7 @@ export function TopBar({
 
       <button
         type="button"
-        onClick={() => setUiTheme(THEME_CYCLE[uiTheme])}
+        onClick={() => setUiTheme(nextTheme(uiTheme, systemDark))}
         title={`Theme: ${uiTheme}`}
         aria-label={`Theme: ${uiTheme}`}
         className="rounded-lg p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"

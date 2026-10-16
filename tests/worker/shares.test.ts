@@ -188,6 +188,38 @@ describe("share API", () => {
     expect(later.res.status).toBe(201);
   });
 
+  it("records each share's size and sums sizes from an index", async () => {
+    const { env, db } = createTestEnv();
+    await create(env);
+    expect(db.sqlite.prepare("SELECT size FROM shares").get()).toEqual({
+      size: sealed.ciphertext.length,
+    });
+    const plan = db.sqlite
+      .prepare("EXPLAIN QUERY PLAN SELECT COALESCE(SUM(size), 0) FROM shares WHERE expires_at > ?")
+      .all(NOW)
+      .map((row) => String((row as { detail: string }).detail))
+      .join("\n");
+    expect(plan).toContain("COVERING INDEX shares_expires_at_size");
+  });
+
+  it("rate-limits link lookups per client", async () => {
+    const { env } = createTestEnv({ LOOKUP_LIMITER: createLimiter(1) });
+    const { body } = await create(env);
+    const lookup = (ip: string) =>
+      handleApi(
+        new Request(`${ORIGIN}/api/shares/${body.id}`, { headers: { "cf-connecting-ip": ip } }),
+        env,
+        { now: NOW },
+      );
+    expect((await lookup("198.51.100.1")).status).toBe(200);
+    const blocked = await lookup("198.51.100.1");
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({
+      error: "Too many attempts. Wait a minute and try again.",
+    });
+    expect((await lookup("198.51.100.2")).status).toBe(200);
+  });
+
   it("retries when a generated id is already taken", async () => {
     const { env } = createTestEnv();
     const ids = ["Taken00000", "Taken00000", "Fresh00000"];

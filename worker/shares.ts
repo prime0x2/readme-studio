@@ -174,7 +174,7 @@ const clientKey = (request: Request) =>
 
 async function assertStorageAvailable(env: Env, now: number, cap: number): Promise<void> {
   const row = await env.DB.prepare(
-    "SELECT COALESCE(SUM(LENGTH(ciphertext)), 0) AS bytes FROM shares WHERE expires_at > ?",
+    "SELECT COALESCE(SUM(size), 0) AS bytes FROM shares WHERE expires_at > ?",
   )
     .bind(now)
     .first<{ bytes: number }>();
@@ -208,11 +208,12 @@ async function createShare(
     const id = options.newId();
     try {
       await env.DB.prepare(
-        "INSERT INTO shares (id, ciphertext, iv, salt, iterations, auth_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO shares (id, ciphertext, size, iv, salt, iterations, auth_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
         .bind(
           id,
           share.ciphertext,
+          share.ciphertext.length,
           share.iv,
           share.salt,
           share.iterations,
@@ -229,7 +230,10 @@ async function createShare(
   throw new HttpError(503, "Couldn't create a link. Try again.");
 }
 
-async function shareMeta(env: Env, id: string, now: number): Promise<Response> {
+async function shareMeta(request: Request, env: Env, id: string, now: number): Promise<Response> {
+  if (!(await env.LOOKUP_LIMITER.limit({ key: clientKey(request) })).success) {
+    throw new HttpError(429, TOO_MANY_ATTEMPTS);
+  }
   const row = await env.DB.prepare("SELECT salt, iterations, expires_at FROM shares WHERE id = ?")
     .bind(id)
     .first<{ salt: string; iterations: number; expires_at: number }>();
@@ -287,7 +291,7 @@ export async function handleApi(
         return await openShare(request, env, id, now);
       }
       if (request.method !== "GET") throw new HttpError(405, "Method not allowed.");
-      return await shareMeta(env, id, now);
+      return await shareMeta(request, env, id, now);
     }
     throw new HttpError(404, "Not found.");
   } catch (err) {

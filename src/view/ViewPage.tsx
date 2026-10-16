@@ -2,28 +2,18 @@ import {
   AlertCircle,
   BookOpenText,
   Check,
-  Download,
   ExternalLink,
-  FileText,
   Link2,
   Loader2,
   Maximize2,
-  Monitor,
-  Moon,
   PencilLine,
-  Sun,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Toaster, toast } from "sonner";
 import { extractTitle, splitIntoSections } from "@/shared";
 import { FullscreenView } from "../components/FullscreenView";
 import { MarkdownArticle } from "../components/MarkdownArticle";
-import {
-  downloadMarkdownFile,
-  type ExportFormat,
-  PDF_PRINT_HINT,
-  requestExport,
-} from "../lib/exports";
+import { DownloadButtons, ThemeToggle, ToolbarButton } from "../components/Toolbar";
 import {
   loadRemoteReadme,
   type RemoteReadme,
@@ -33,10 +23,7 @@ import {
   type ViewMode,
 } from "../lib/remoteReadme";
 import { useResolvedTheme } from "../lib/useRenderedMarkdown";
-import { lastSaveSucceeded, type UiTheme, useDocStore } from "../store/useDocStore";
-
-const THEME_CYCLE: Record<UiTheme, UiTheme> = { light: "dark", dark: "system", system: "light" };
-const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
+import { lastSaveSucceeded, useDocStore } from "../store/useDocStore";
 
 const EXAMPLES = [
   "https://github.com/prime0x2/prime0x2",
@@ -57,45 +44,10 @@ function useThemeClass(): "light" | "dark" {
   return resolved;
 }
 
-function ToolbarButton({
-  onClick,
-  title,
-  children,
-  disabled,
-  primary,
-}: {
-  onClick: () => void;
-  title?: string;
-  children: ReactNode;
-  disabled?: boolean;
-  primary?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
-      className={
-        primary
-          ? "flex items-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-700 disabled:opacity-50"
-          : "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:opacity-50 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-100"
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
 function ThemeButton() {
   const uiTheme = useDocStore((s) => s.uiTheme);
   const setUiTheme = useDocStore((s) => s.setUiTheme);
-  const Icon = THEME_ICON[uiTheme];
-  return (
-    <ToolbarButton onClick={() => setUiTheme(THEME_CYCLE[uiTheme])} title={`Theme: ${uiTheme}`}>
-      <Icon size={14} />
-    </ToolbarButton>
-  );
+  return <ThemeToggle theme={uiTheme} onChange={setUiTheme} />;
 }
 
 async function copyToClipboard(text: string, what: string) {
@@ -223,7 +175,6 @@ export function ViewPage() {
   const [{ source, mode: initialMode }] = useState(() => sourceFromLocation(window.location));
   const [mode, setModeState] = useState<ViewMode>(initialMode);
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
-  const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
   useEffect(() => {
     if (!source) return;
@@ -251,20 +202,6 @@ export function ViewPage() {
   function setMode(next: ViewMode) {
     if (source) window.history.replaceState(null, "", shareUrl(source, next));
     setModeState(next);
-  }
-
-  async function handleExport(format: ExportFormat) {
-    if (!readme || exporting) return;
-    setExporting(format);
-    try {
-      if (format === "pdf") toast.info(PDF_PRINT_HINT, { duration: 12_000 });
-      await requestExport(format, readme.markdown, title, readme.base);
-      if (format === "docx") toast.success("DOCX downloaded.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Export failed.");
-    } finally {
-      setExporting(null);
-    }
   }
 
   const sectionCount = useDocStore((s) => s.sections.length);
@@ -321,21 +258,6 @@ export function ViewPage() {
     );
   }
 
-  const exportLabel = (format: ExportFormat, label: string) => (
-    <ToolbarButton
-      onClick={() => void handleExport(format)}
-      disabled={!readme || exporting !== null}
-      title={`Download as ${label}`}
-    >
-      {exporting === format ? (
-        <Loader2 size={13} className="animate-spin" />
-      ) : (
-        <FileText size={13} />
-      )}
-      {label}
-    </ToolbarButton>
-  );
-
   return (
     <div className="flex h-full flex-col bg-paper text-stone-900 dark:bg-stone-950 dark:text-stone-100">
       <header className="flex items-center gap-2 border-b border-stone-200 bg-white px-4 py-2.5 dark:border-stone-800 dark:bg-stone-900">
@@ -374,17 +296,12 @@ export function ViewPage() {
           <>
             <div className="mx-1 hidden h-5 w-px bg-stone-200 md:block dark:bg-stone-700" />
             <span className="hidden items-center gap-1 md:flex">
-              {exportLabel("pdf", "PDF")}
-              {exportLabel("docx", "DOCX")}
-              <ToolbarButton
-                onClick={() =>
-                  downloadMarkdownFile(readme.markdown, readme.base.raw.split("/").at(-1))
-                }
-                title="Download the markdown file"
-              >
-                <Download size={13} />
-                .md
-              </ToolbarButton>
+              <DownloadButtons
+                markdown={readme.markdown}
+                title={title}
+                base={readme.base}
+                filename={readme.base.raw.split("/").at(-1)}
+              />
             </span>
             <ToolbarButton
               primary

@@ -2,6 +2,16 @@
 
 All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/readme-studio/releases>
 
+## Unreleased
+
+### ✨ New
+
+- **Theme toggle and downloads on shared links.** Whoever opens a password-protected link can now switch between light, dark and system themes, and download the document as PDF, DOCX or Markdown, all built in their browser.
+
+### 🛠 Improved
+
+- **Share-link hardening.** Link lookups are rate-limited per client; the storage-cap check reads a small size column instead of every stored document; the build now fails if the share pages' security policy doesn't match the page that's actually served; and the password form is friendlier to screen readers and keyboards (errors are announced and linked to the field, and a wrong password is selected for retyping).
+
 ## [2.1.0](https://github.com/prime0x2/readme-studio/releases/tag/v2.1.0) — 2026-10-15
 
 **Share without giving up privacy.** Send a README to anyone with a password-protected link that's encrypted before it leaves your browser. The editor also starts from a blank page now, and never leaves you without a section to type in.
