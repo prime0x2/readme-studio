@@ -6,6 +6,7 @@ All notable changes to ReadmeStudio. Releases: <https://github.com/prime0x2/read
 
 ### ✨ New
 
+- **A new look for shared links' password screen.** The locked page now looks like the document it protects: a sheet with its lines blacked out and an orange seal. It shows when the link expires, has a show-password button, and reacts while unlocking and to a wrong password.
 - **Theme toggle and downloads on shared links.** Whoever opens a password-protected link can now switch between light, dark and system themes, and download the document as PDF, DOCX or Markdown, all built in their browser.
 
 ### 🛠 Improved

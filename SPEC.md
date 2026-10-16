@@ -300,7 +300,7 @@ Built as **password-protected, end-to-end encrypted snapshots** on Cloudflare Wo
 
 1. In the editor, **Share** opens a dialog: password (typed twice, at least 8 characters), expiry (1 / 7 / 30 days, default 7), **Create link**.
 2. The dialog shows a short link, `https://readme.prime0x2.dev/s/<id>`, with a copy button and a reminder to send the password separately.
-3. The recipient opens the link, types the password and sees the document **full screen**, with a small floating toolbar: a theme toggle (light → dark → system; follows the system until changed, remembered in that browser under its own storage key, apart from the editor's document) and **PDF**, **DOCX** and **.md** downloads, all built in their browser like the editor's exports. No editor.
+3. The recipient opens the link and sees a **sealed sheet**: the shape of a document with its lines blacked out, an orange seal, "This document is sealed", a password field with show/hide, **Unlock**, the link's expiry date and a note that the document is decrypted on their device. While unlocking, a sweep crosses the blacked-out lines; a wrong password shakes the field (both off under reduced motion). After the password they see the document **full screen**, with a small floating toolbar: a theme toggle (light → dark → system; follows the system until changed, remembered in that browser under its own storage key, apart from the editor's document) and **PDF**, **DOCX** and **.md** downloads, all built in their browser like the editor's exports. No editor.
 4. Wrong password: "Wrong password." Too many attempts: "Too many attempts. Wait a minute and try again." Unknown link: "This link doesn't exist." Expired: "This link has expired."
 
 ### 10.2 Decisions
